@@ -121,7 +121,8 @@ const BlogPage: React.FC = () => {
         }
     }, [currentPage, loading]);
 
-    const categories = ['Semua', ...new Set(articles.map(a => a.category))];
+    // FIX: Using Array.from and explicit type to prevent 'unknown' inference in some TS environments
+    const categories: string[] = ['Semua', ...Array.from(new Set(articles.map(a => a.category)))];
 
     const filteredArticles = useMemo(() => {
         if (selectedCategory === 'Semua') return articles;

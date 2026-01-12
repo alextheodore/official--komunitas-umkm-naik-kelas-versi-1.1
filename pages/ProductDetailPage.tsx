@@ -1,23 +1,24 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { allProductsData } from '../data/products';
+import { supabase } from '../lib/supabase';
+import type { Product } from '../types';
 import { StarIcon, EmailIcon, WhatsAppIcon, ChevronLeftIcon, ChevronRightIcon, HeartIcon, ShareIcon, SpinnerIcon, CheckCircleIcon, ExclamationCircleIcon } from '../components/icons';
 import ProductCard from '../components/ProductCard';
 import DetailPageSkeleton from '../components/skeletons/DetailPageSkeleton';
-import CardSkeleton from '../components/skeletons/CardSkeleton';
 import { useAuth } from '../contexts/AuthContext';
 import ShareModal from '../components/ShareModal';
 import Tooltip from '../components/Tooltip';
 
 const ProductDetailPage: React.FC = () => {
     const { productId } = useParams<{ productId: string }>();
-    const [product, setProduct] = useState<(typeof allProductsData)[0] | null>();
+    const [product, setProduct] = useState<Product | null>(null);
+    const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [mainImage, setMainImage] = useState<string | undefined>();
     const [thumbnailStartIndex, setThumbnailStartIndex] = useState(0);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     
-    // Loading states for buttons
     const [isBuying, setIsBuying] = useState(false);
     const [isWishlistLoading, setIsWishlistLoading] = useState(false);
 
@@ -26,61 +27,101 @@ const ProductDetailPage: React.FC = () => {
 
     const VISIBLE_THUMBNAILS = 4;
 
-    useEffect(() => {
+    const fetchProductDetails = async () => {
+        if (!productId) return;
         setLoading(true);
-        setThumbnailStartIndex(0); // Reset carousel on product change
-        const timer = setTimeout(() => {
-            const foundProduct = allProductsData.find(p => p.id.toString() === productId);
-            setProduct(foundProduct || null);
+        try {
+            // 1. Ambil detail produk dan info penjual dari Supabase
+            const { data, error } = await supabase
+                .from('products')
+                .select(`
+                    *,
+                    profiles:seller_id (id, full_name, business_name, avatar_url, email, phone_number)
+                `)
+                .eq('id', productId)
+                .single();
+
+            if (error) throw error;
+
+            if (data) {
+                const mappedProduct: Product = {
+                    id: data.id,
+                    name: data.name,
+                    seller_id: data.seller_id,
+                    price: data.price,
+                    stock: data.stock,
+                    category: data.category,
+                    description: data.description,
+                    images: data.images || [],
+                    rating: data.rating || 0,
+                    reviewsCount: data.reviews_count || 0,
+                    dateListed: data.created_at,
+                    seller: {
+                        id: data.profiles.id,
+                        name: data.profiles.full_name,
+                        businessName: data.profiles.business_name,
+                        profilePicture: data.profiles.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.profiles.full_name)}`,
+                        phone: data.profiles.phone_number || '',
+                        email: data.profiles.email || ''
+                    }
+                };
+
+                setProduct(mappedProduct);
+                setMainImage(mappedProduct.images[0]);
+
+                // 2. Ambil Produk Terkait (Kategori sama, ID berbeda)
+                const { data: relatedData } = await supabase
+                    .from('products')
+                    .select(`
+                        *,
+                        profiles:seller_id (id, full_name, business_name, avatar_url, email, phone_number)
+                    `)
+                    .eq('category', data.category)
+                    .neq('id', data.id)
+                    .limit(4);
+
+                if (relatedData) {
+                    setRelatedProducts(relatedData.map(rp => ({
+                        ...rp,
+                        reviewsCount: rp.reviews_count,
+                        seller: {
+                            id: rp.profiles.id,
+                            name: rp.profiles.full_name,
+                            businessName: rp.profiles.business_name,
+                            profilePicture: rp.profiles.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(rp.profiles.full_name)}`,
+                            phone: rp.profiles.phone_number || '',
+                            email: rp.profiles.email || ''
+                        }
+                    })));
+                }
+            }
+        } catch (err) {
+            console.error("Gagal memuat detail produk:", err);
+            setProduct(null);
+        } finally {
             setLoading(false);
-        }, 800);
-        return () => clearTimeout(timer);
+        }
+    };
+
+    useEffect(() => {
+        fetchProductDetails();
     }, [productId]);
 
     useEffect(() => {
         if (product) {
-            setMainImage(product.images[0]);
-            
-            const originalTitle = document.title;
-            const descriptionTag = document.querySelector('meta[name="description"]');
-            const originalDescription = descriptionTag?.getAttribute('content') || '';
-            let keywordsTag = document.querySelector('meta[name="keywords"]');
-            const originalKeywords = keywordsTag?.getAttribute('content') || '';
-            const wasKeywordsTagMissing = !keywordsTag;
-
-            document.title = `${product.name} oleh ${product.seller.businessName} - Marketplace UMKM`;
-            const description = `Beli ${product.name}. ${product.description.substring(0, 120)}... Temukan di marketplace Komunitas UMKM Naik Kelas.`;
-            descriptionTag?.setAttribute('content', description);
-
-            if (!keywordsTag) {
-                keywordsTag = document.createElement('meta');
-                keywordsTag.setAttribute('name', 'keywords');
-                document.head.appendChild(keywordsTag);
-            }
-            keywordsTag.setAttribute('content', `${product.name}, ${product.category}, ${product.seller.businessName}, Produk UMKM`);
-            
-            return () => {
-                document.title = originalTitle;
-                descriptionTag?.setAttribute('content', originalDescription);
-                if (wasKeywordsTagMissing && keywordsTag) {
-                    keywordsTag.remove();
-                } else if (keywordsTag) {
-                    keywordsTag.setAttribute('content', originalKeywords);
-                }
-            };
+            document.title = `${product.name} | Marketplace UMKM Naik Kelas`;
         }
     }, [product]);
 
-    if (loading) {
-        return <DetailPageSkeleton />;
-    }
+    if (loading) return <DetailPageSkeleton />;
 
     if (!product) {
         return (
-            <div className="text-center py-20">
-                <h1 className="text-3xl font-bold text-gray-800">Produk tidak ditemukan</h1>
-                <p className="mt-4 text-gray-600">Produk yang Anda cari mungkin telah dihapus atau tidak ada.</p>
-                <Link to="/marketplace" className="mt-6 inline-block px-6 py-3 text-white bg-primary-600 rounded-full hover:bg-primary-700">
+            <div className="text-center py-32 bg-gray-50 min-h-screen">
+                <ExclamationCircleIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h1 className="text-3xl font-extrabold text-gray-800">Produk tidak ditemukan</h1>
+                <p className="mt-2 text-gray-500">Mungkin produk sudah dihapus atau tautan sudah tidak valid.</p>
+                <Link to="/marketplace" className="mt-8 inline-block px-8 py-3 bg-primary-600 text-white font-bold rounded-full hover:bg-primary-700 transition-all shadow-lg shadow-primary-100">
                     Kembali ke Marketplace
                 </Link>
             </div>
@@ -90,111 +131,66 @@ const ProductDetailPage: React.FC = () => {
     const inWishlist = currentUser ? isInWishlist(product.id) : false;
     const isOutOfStock = product.stock === 0;
 
-    const handleWishlistToggle = () => {
+    const handleWishlistToggle = async () => {
         if (!currentUser) {
             navigate('/login');
             return;
         }
-        
         if (isWishlistLoading) return;
-
         setIsWishlistLoading(true);
-        
-        // Simulate network request delay
-        setTimeout(() => {
-            if (inWishlist) {
-                removeFromWishlist(product.id);
-            } else {
-                addToWishlist(product.id);
-            }
+        try {
+            if (inWishlist) await removeFromWishlist(product.id);
+            else await addToWishlist(product.id);
+        } finally {
             setIsWishlistLoading(false);
-        }, 800);
+        }
     };
 
     const handleBuy = () => {
         if (isBuying || isOutOfStock) return;
         setIsBuying(true);
-        // Simulate processing delay to show spinner
         setTimeout(() => {
             setIsBuying(false);
-            alert('Pesanan Anda sedang diproses. Terima kasih telah berbelanja di UMKM Naik Kelas! (Simulasi)');
-        }, 2000);
+            alert('Fitur pembayaran sedang disiapkan. Silakan hubungi penjual via WhatsApp untuk pemesanan manual.');
+        }, 1500);
     };
 
     const formatPrice = (price: number) => {
         return new Intl.NumberFormat('id-ID', {
-            style: 'currency',
-            currency: 'IDR',
-            minimumFractionDigits: 0,
+            style: 'currency', currency: 'IDR', minimumFractionDigits: 0,
         }).format(price);
     };
 
-    const handlePrev = () => {
-        setThumbnailStartIndex(prev => Math.max(0, prev - 1));
-    };
+    const handlePrev = () => setThumbnailStartIndex(prev => Math.max(0, prev - 1));
+    const handleNext = () => setThumbnailStartIndex(prev => Math.min(product.images.length - VISIBLE_THUMBNAILS, prev + 1));
 
-    const handleNext = () => {
-        setThumbnailStartIndex(prev => Math.min(product.images.length - VISIBLE_THUMBNAILS, prev + 1));
-    };
-
-    // Updated logic: Filter products by same category OR same seller, excluding current product
-    const relatedProducts = allProductsData
-        .filter(p => (p.category === product.category || p.seller.id === product.seller.id) && p.id !== product.id)
-        .slice(0, 4);
-
-    const whatsappMessage = `Halo, saya tertarik dengan produk "${product.name}" yang ada di marketplace Komunitas UMKM Naik Kelas.`;
+    const whatsappMessage = `Halo, saya tertarik dengan produk "${product.name}" yang ada di Marketplace UMKM Naik Kelas.`;
     const whatsappLink = `https://wa.me/${product.seller.phone}?text=${encodeURIComponent(whatsappMessage)}`;
     
-    const emailSubject = `Pertanyaan mengenai produk: ${product.name}`;
-    const emailLink = `mailto:${product.seller.email}?subject=${encodeURIComponent(emailSubject)}`;
-    
-    const productUrl = window.location.href;
-
     return (
-        <>
-        <div className="bg-white">
+        <div className="bg-white min-h-screen">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="grid lg:grid-cols-2 gap-12 items-start">
                     {/* Image Gallery */}
-                    <div>
-                        <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-lg border border-gray-200 relative">
-                             <img src={mainImage} alt={product.name} className={`w-full h-full object-cover ${isOutOfStock ? 'grayscale-[0.8]' : ''}`} />
+                    <div className="animate-fade-in-up">
+                        <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-2xl border border-gray-100 shadow-sm relative group bg-gray-50">
+                             <img src={mainImage} alt={product.name} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${isOutOfStock ? 'grayscale-[0.5]' : ''}`} />
                              {isOutOfStock && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                    <span className="px-6 py-2 bg-red-600 text-white text-xl font-bold rounded-md shadow-lg">STOK HABIS</span>
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px]">
+                                    <span className="px-8 py-3 bg-red-600 text-white text-xl font-black rounded-xl shadow-2xl tracking-widest">STOK HABIS</span>
                                 </div>
                              )}
                         </div>
                         {product.images.length > 1 && (
-                             <div className="mt-4 relative px-10">
-                                {product.images.length > VISIBLE_THUMBNAILS && (
-                                    <>
-                                        <button
-                                            onClick={handlePrev}
-                                            disabled={thumbnailStartIndex === 0}
-                                            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/80 rounded-full shadow-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition"
-                                            aria-label="Previous image"
-                                        >
-                                            <ChevronLeftIcon className="h-5 w-5 text-gray-700" />
-                                        </button>
-                                        <button
-                                            onClick={handleNext}
-                                            disabled={thumbnailStartIndex >= product.images.length - VISIBLE_THUMBNAILS}
-                                            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/80 rounded-full shadow-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition"
-                                            aria-label="Next image"
-                                        >
-                                            <ChevronRightIcon className="h-5 w-5 text-gray-700" />
-                                        </button>
-                                    </>
-                                )}
-                                <div className="grid grid-cols-4 gap-4">
-                                    {product.images.slice(thumbnailStartIndex, thumbnailStartIndex + VISIBLE_THUMBNAILS).map((img, index) => (
+                             <div className="mt-4 relative px-2">
+                                <div className="flex gap-4 overflow-x-auto no-scrollbar py-2">
+                                    {product.images.map((img, index) => (
                                         <button
                                             key={index}
                                             onClick={() => setMainImage(img)}
-                                            className={`block aspect-w-1 aspect-h-1 rounded-md overflow-hidden border-2 transition ${mainImage === img ? 'border-primary-500 ring-2 ring-primary-200' : 'border-transparent hover:border-primary-300'}`}
+                                            className={`flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all ${mainImage === img ? 'border-primary-500 ring-4 ring-primary-100' : 'border-transparent hover:border-gray-200'}`}
                                         >
-                                            <img src={img} alt={`${product.name} thumbnail ${thumbnailStartIndex + index + 1}`} className="w-full h-full object-cover" />
+                                            <img src={img} alt="" className="w-full h-full object-cover" />
                                         </button>
                                     ))}
                                 </div>
@@ -203,115 +199,74 @@ const ProductDetailPage: React.FC = () => {
                     </div>
 
                     {/* Product Info */}
-                    <div>
-                        <span className="text-sm font-semibold text-primary-600 uppercase">{product.category}</span>
-                        <h1 className="mt-2 text-3xl md:text-4xl font-extrabold text-gray-900">{product.name}</h1>
+                    <div className="animate-fade-in-up [animation-delay:0.1s]">
+                        <div className="flex items-center gap-2 mb-4">
+                            <span className="px-3 py-1 bg-primary-50 text-primary-700 text-xs font-black uppercase tracking-wider rounded-lg border border-primary-100">{product.category}</span>
+                            {product.stock > 0 && <span className="px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-lg border border-green-100">Tersedia {product.stock} Stok</span>}
+                        </div>
                         
-                        <div className="mt-4 flex items-center space-x-4">
-                            <div className="flex items-center">
-                                {[...Array(5)].map((_, i) => (
-                                    <StarIcon key={i} className="h-5 w-5 text-yellow-400" filled={i < Math.round(product.rating)} />
-                                ))}
+                        <h1 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">{product.name}</h1>
+                        
+                        <div className="mt-4 flex items-center gap-4">
+                            <div className="flex items-center bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100">
+                                <StarIcon className="h-5 w-5 text-yellow-400" filled={true} />
+                                <span className="ml-1.5 font-black text-yellow-700">{product.rating.toFixed(1)}</span>
                             </div>
-                            <span className="text-sm text-gray-500">{product.rating.toFixed(1)} ({product.reviewsCount} ulasan)</span>
+                            <span className="text-sm font-medium text-gray-400">({product.reviewsCount} Ulasan Pelanggan)</span>
                         </div>
 
-                        <div className="mt-6">
-                            <Tooltip content="Harga belum termasuk ongkos kirim">
-                                <p className="text-3xl font-bold text-gray-800 cursor-help w-fit">{formatPrice(product.price)}</p>
-                            </Tooltip>
+                        <div className="mt-8">
+                            <p className="text-4xl font-black text-primary-600 tracking-tight">{formatPrice(product.price)}</p>
+                            <p className="text-xs text-gray-400 mt-1">* Harga belum termasuk biaya pengiriman</p>
                         </div>
 
-                        {/* Stock Status */}
-                        <div className="mt-4 flex items-center space-x-2">
-                            {isOutOfStock ? (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                    <ExclamationCircleIcon className="w-4 h-4 mr-1" /> Stok Habis
-                                </span>
-                            ) : (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    <CheckCircleIcon className="w-4 h-4 mr-1" /> Stok Tersedia: {product.stock}
-                                </span>
-                            )}
-                        </div>
-                        
-                        <div className="mt-6">
+                        <div className="mt-10 space-y-4">
                             <button 
                                 onClick={handleBuy} 
                                 disabled={isBuying || isOutOfStock}
-                                className={`w-full text-white text-lg font-bold py-4 rounded-lg shadow-md transition-all duration-200 mb-4 flex items-center justify-center ${
+                                className={`w-full py-5 rounded-2xl font-black text-lg transition-all shadow-xl flex items-center justify-center gap-3 ${
                                     isBuying || isOutOfStock 
-                                        ? 'bg-gray-400 cursor-not-allowed' 
-                                        : 'bg-primary-600 hover:bg-primary-700 hover:shadow-xl hover:scale-[1.02]'
+                                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                                        : 'bg-primary-600 text-white hover:bg-primary-700 hover:shadow-primary-200 hover:-translate-y-1 active:scale-95'
                                 }`}
                             >
-                                {isBuying ? (
-                                    <>
-                                        <SpinnerIcon className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-                                        Memproses...
-                                    </>
-                                ) : isOutOfStock ? (
-                                    'Stok Habis'
-                                ) : (
-                                    'Beli Sekarang'
-                                )}
+                                {isBuying ? <SpinnerIcon className="animate-spin h-6 w-6" /> : null}
+                                {isBuying ? 'MEMPROSES...' : isOutOfStock ? 'STOK TIDAK TERSEDIA' : 'BELI SEKARANG'}
                             </button>
-                        </div>
-
-                        <div className="mt-2">
-                            <h3 className="text-lg font-semibold text-gray-800">Deskripsi Produk</h3>
-                            <p className="mt-2 text-gray-600 whitespace-pre-wrap">{product.description}</p>
-                        </div>
-                        
-                        <div className="mt-8 p-4 bg-gray-50 rounded-lg border">
-                            <h4 className="font-semibold text-gray-800">Informasi Penjual</h4>
-                             <div className="mt-3 flex items-center">
-                                <img src={product.seller.profilePicture} alt={product.seller.name} className="h-12 w-12 rounded-full object-cover" />
-                                <div className="ml-4">
-                                    <Link to={`/sellers/${product.seller.id}`} className="font-bold text-gray-800 hover:text-primary-600 hover:underline transition-colors">
-                                      {product.seller.businessName}
-                                    </Link>
-                                    <p className="text-sm text-gray-500">{product.seller.name}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mt-8 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 py-4 bg-green-600 text-white font-bold rounded-2xl hover:bg-green-700 transition-all shadow-lg shadow-green-100">
+                                    <WhatsAppIcon className="h-5 w-5" /> Chat via WhatsApp
+                                </a>
                                 <button
                                     onClick={handleWishlistToggle}
                                     disabled={isWishlistLoading}
-                                    className={`flex items-center justify-center px-4 py-3 border text-sm font-medium rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
-                                        inWishlist
-                                        ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
-                                        : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                    className={`flex items-center justify-center gap-2 py-4 border-2 font-bold rounded-2xl transition-all ${
+                                        inWishlist ? 'bg-red-50 border-red-100 text-red-600' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                                     }`}
                                 >
-                                    {isWishlistLoading ? (
-                                        <SpinnerIcon className="animate-spin h-5 w-5 mr-2 text-current" />
-                                    ) : (
-                                        <HeartIcon className="h-5 w-5 mr-2" filled={inWishlist} />
-                                    )}
-                                    {inWishlist ? 'Hapus Wishlist' : 'Wishlist'}
-                                </button>
-                                <button
-                                    onClick={() => setIsShareModalOpen(true)}
-                                    className="flex items-center justify-center px-4 py-3 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-                                >
-                                    <ShareIcon className="h-5 w-5 mr-2" />
-                                    Bagikan
+                                    {isWishlistLoading ? <SpinnerIcon className="animate-spin h-5 w-5" /> : <HeartIcon className="h-5 w-5" filled={inWishlist} />}
+                                    {inWishlist ? 'Disukai' : 'Tambah Favorit'}
                                 </button>
                             </div>
-                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
-                                    <WhatsAppIcon className="h-5 w-5 mr-2" />
-                                    Beli via WhatsApp
-                                </a>
-                                <a href={emailLink} className="flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                                    <EmailIcon className="h-5 w-5 mr-2" />
-                                    Hubungi Penjual
-                                </a>
+                        </div>
+
+                        <div className="mt-12">
+                            <h3 className="text-lg font-black text-gray-900 border-b-2 border-primary-100 pb-2 inline-block">Deskripsi Produk</h3>
+                            <p className="mt-4 text-gray-600 leading-relaxed whitespace-pre-wrap text-sm md:text-base">{product.description}</p>
+                        </div>
+                        
+                        <div className="mt-10 p-6 bg-gradient-to-r from-gray-50 to-white rounded-2xl border border-gray-100 flex items-center justify-between group">
+                             <div className="flex items-center gap-4">
+                                <img src={product.seller.profilePicture} alt="" className="h-14 w-14 rounded-full object-cover ring-4 ring-white shadow-sm" />
+                                <div>
+                                    <h4 className="font-black text-gray-900 group-hover:text-primary-600 transition-colors">{product.seller.businessName}</h4>
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-tighter">Verified Seller • Jakarta</p>
+                                </div>
                             </div>
+                            <button onClick={() => setIsShareModalOpen(true)} className="p-3 bg-white rounded-xl text-gray-400 hover:text-primary-600 hover:shadow-md transition-all">
+                                <ShareIcon className="h-6 w-6" />
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -319,26 +274,26 @@ const ProductDetailPage: React.FC = () => {
 
             {/* Related Products */}
             {relatedProducts.length > 0 && (
-                <section className="bg-gray-50 py-16">
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                        <h2 className="text-2xl font-bold text-center text-gray-800 mb-8">Produk Terkait & Lainnya dari Penjual</h2>
-                        <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {loading ? 
-                                Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />) :
-                                relatedProducts.map(related => <ProductCard key={related.id} product={related} />)
-                            }
+                <section className="bg-gray-50 py-20 border-t border-gray-100">
+                    <div className="container mx-auto px-4">
+                        <div className="flex items-center justify-between mb-10">
+                            <h2 className="text-2xl font-black text-gray-900">Mungkin Anda Suka</h2>
+                            <Link to="/marketplace" className="text-sm font-bold text-primary-600 hover:underline">Lihat Semua →</Link>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {relatedProducts.map(related => <ProductCard key={related.id} product={related} />)}
                         </div>
                     </div>
                 </section>
             )}
+            
+            <ShareModal 
+                isOpen={isShareModalOpen} 
+                onClose={() => setIsShareModalOpen(false)} 
+                url={window.location.href} 
+                title={product.name} 
+            />
         </div>
-        <ShareModal 
-            isOpen={isShareModalOpen} 
-            onClose={() => setIsShareModalOpen(false)} 
-            url={productUrl} 
-            title={product.name} 
-        />
-        </>
     );
 };
 
