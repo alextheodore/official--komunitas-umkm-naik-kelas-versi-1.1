@@ -10,11 +10,27 @@ import { supabase } from '../lib/supabase';
 
 const HeroSection: React.FC = () => {
     const [currentSlide, setCurrentSlide] = useState(1);
+    const [counts, setCounts] = useState({ users: 0, events: 0, products: 0 });
     const totalSlides = 4;
+
+    useEffect(() => {
+        const fetchCounts = async () => {
+            const [u, e, p] = await Promise.all([
+                supabase.from('profiles').select('*', { count: 'exact', head: true }),
+                supabase.from('events').select('*', { count: 'exact', head: true }),
+                supabase.from('products').select('*', { count: 'exact', head: true })
+            ]);
+            setCounts({
+                users: u.count || 0,
+                events: e.count || 0,
+                products: p.count || 0
+            });
+        };
+        fetchCounts();
+    }, []);
 
     return (
         <section className="relative h-[90vh] min-h-[600px] flex flex-col justify-center overflow-hidden bg-gray-900">
-            {/* Background Image with Overlay */}
             <div className="absolute inset-0 z-0">
                 <img 
                     src="https://images.unsplash.com/photo-1556761175-b413da4baf72?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80" 
@@ -25,22 +41,18 @@ const HeroSection: React.FC = () => {
             </div>
 
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-                {/* Badge Forum */}
                 <div className="inline-flex items-center px-6 py-2 rounded-full border border-white/20 bg-white/5 backdrop-blur-md mb-8 animate-fade-in-up">
                     <span className="text-white font-bold tracking-widest text-sm uppercase">Forum Diskusi Aktif</span>
                 </div>
 
-                {/* Main Headline */}
                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white leading-tight mb-6 animate-fade-in-up [animation-delay:0.2s]">
                     Transformasi Digital <span className="text-accent">UMKM</span> <br /> Bersama Kami
                 </h1>
 
-                {/* Subtext */}
                 <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-10 leading-relaxed animate-fade-in-up [animation-delay:0.4s]">
                     Bertukar pikiran dan temukan solusi bersama para ahli dan sesama anggota komunitas UMKM Indonesia.
                 </p>
 
-                {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up [animation-delay:0.6s]">
                     <Link 
                         to="/register" 
@@ -57,26 +69,24 @@ const HeroSection: React.FC = () => {
                 </div>
             </div>
 
-            {/* Bottom Stats Bar - Adjusted to Center */}
             <div className="absolute bottom-0 left-0 w-full z-20">
                 <div className="container mx-auto px-4 pb-10">
                     <div className="flex flex-col md:flex-row items-center justify-center gap-12 lg:gap-24">
                         <div className="flex flex-wrap justify-center gap-12 lg:gap-20">
                             <div className="text-center md:text-left">
-                                <p className="text-3xl font-black text-white leading-none">5.000+</p>
+                                <p className="text-3xl font-black text-white leading-none">{counts.users.toLocaleString('id-ID')}</p>
                                 <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-2">Anggota Terdaftar</p>
                             </div>
                             <div className="text-center md:text-left border-l border-white/10 pl-8 lg:pl-12">
-                                <p className="text-3xl font-black text-white leading-none">100+</p>
+                                <p className="text-3xl font-black text-white leading-none">{counts.events.toLocaleString('id-ID')}</p>
                                 <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-2">Event Diadakan</p>
                             </div>
                             <div className="text-center md:text-left border-l border-white/10 pl-8 lg:pl-12">
-                                <p className="text-3xl font-black text-white leading-none">1.200+</p>
+                                <p className="text-3xl font-black text-white leading-none">{counts.products.toLocaleString('id-ID')}</p>
                                 <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-2">Produk Lokal</p>
                             </div>
                         </div>
 
-                        {/* Slider Controls - Also Centered or Balanced */}
                         <div className="flex items-center gap-6">
                             <button className="p-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all active:scale-90">
                                 <ChevronLeftIcon className="w-5 h-5" />
@@ -98,7 +108,6 @@ const HeroSection: React.FC = () => {
                         </div>
                     </div>
                 </div>
-                {/* Yellow Progress Bar Bottom - Centered */}
                 <div className="h-1.5 w-full bg-white/5 flex justify-center">
                     <div className="h-full w-2/3 bg-accent shadow-[0_0_10px_rgba(255,193,7,0.5)]"></div>
                 </div>
@@ -122,7 +131,14 @@ const BlogSection: React.FC = () => {
                     .limit(3);
                 if (data) {
                     setArticles(data.map((a: any) => ({
-                        ...a,
+                        id: a.id,
+                        category: a.category,
+                        title: a.title,
+                        summary: a.summary,
+                        content: a.content,
+                        author: a.author,
+                        date: a.date,
+                        image: a.image,
                         authorImage: a.author_image
                     })));
                 }
@@ -219,7 +235,6 @@ const HomePage: React.FC = () => {
             <BlogSection />
             <EventsSection />
             
-            {/* Call to Action Section Bottom */}
             <section className="py-20 bg-primary-600">
                 <div className="container mx-auto px-4 text-center text-white">
                     <h2 className="text-3xl md:text-4xl font-black mb-6">Siap Menjadikan UMKM Anda Naik Kelas?</h2>

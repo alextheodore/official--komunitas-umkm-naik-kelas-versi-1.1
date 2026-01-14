@@ -6,7 +6,7 @@ import CardSkeleton from '../components/skeletons/CardSkeleton';
 import { SparklesIcon } from '../components/icons';
 import { supabase } from '../lib/supabase';
 
-// Exported for Breadcrumbs and SearchModal compatibility
+// FIX: Exporting mock data for SearchModal and demo purposes
 export const allEventsData: Event[] = [
     { id: '1', date: '2024-07-25', title: 'Digital Marketing 101 untuk UMKM', description: 'Pelajari dasar-dasar pemasaran digital.', image: 'https://picsum.photos/seed/event1/400/300', category: 'Webinar' },
     { id: '2', date: '2024-08-10', title: 'Workshop Manajemen Keuangan', description: 'Kelola keuangan bisnis Anda dengan efektif.', image: 'https://picsum.photos/seed/event2/400/300', category: 'Workshop' },
@@ -49,10 +49,7 @@ const EventsPage: React.FC = () => {
     const upcomingEvents = useMemo(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-
-        return events
-            .filter(event => new Date(event.date) >= today)
-            .slice(0, 3);
+        return events.filter(event => new Date(event.date) >= today).slice(0, 3);
     }, [events]);
 
     return (
@@ -67,7 +64,6 @@ const EventsPage: React.FC = () => {
             </section>
             
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                
                 {!loading && upcomingEvents.length > 0 && selectedCategory === 'Semua' && (
                     <div className="mb-16">
                         <div className="flex items-center mb-6">
@@ -88,10 +84,8 @@ const EventsPage: React.FC = () => {
                         <button
                             key={category}
                             onClick={() => setSelectedCategory(category)}
-                            className={`px-4 py-2 text-sm font-semibold rounded-full transition-all duration-300 transform hover:scale-105 ${
-                                selectedCategory === category
-                                ? 'bg-primary-600 text-white shadow-lg'
-                                : 'bg-white text-gray-700 hover:bg-primary-50 hover:text-primary-600 border border-gray-300'
+                            className={`px-4 py-2 text-sm font-semibold rounded-full transition-all duration-300 ${
+                                selectedCategory === category ? 'bg-primary-600 text-white shadow-lg' : 'bg-white text-gray-700 hover:bg-primary-50 border border-gray-300'
                             }`}
                         >
                             {category}
@@ -110,9 +104,6 @@ const EventsPage: React.FC = () => {
                 ) : (
                     <div className="text-center py-16">
                         <h2 className="text-2xl font-bold text-gray-800">Tidak Ada Event</h2>
-                        <p className="mt-2 text-gray-600">
-                            Saat ini tidak ada event yang tersedia untuk kategori "{selectedCategory}".
-                        </p>
                     </div>
                 )}
             </div>

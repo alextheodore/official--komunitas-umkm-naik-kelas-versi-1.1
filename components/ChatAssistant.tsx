@@ -1,7 +1,5 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { ChatBotIcon, CloseIcon, PaperAirplaneIcon, SpinnerIcon } from './icons';
-import { GoogleGenAI } from '@google/genai';
+import { ChatBotIcon, CloseIcon, PaperAirplaneIcon } from './icons';
 
 interface Message {
   id: number;
@@ -17,12 +15,13 @@ interface ChatAssistantProps {
 const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen: externalIsOpen, onToggle }) => {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { id: 1, text: "Halo! Saya Mentor AI UMKM Naik Kelas. Ada yang bisa saya bantu terkait strategi bisnis Anda hari ini?", sender: 'bot' }
+    { id: 1, text: "Halo! Saya asisten virtual Komunitas UMKM Naik Kelas. Ada yang bisa saya bantu hari ini?", sender: 'bot' }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Determine if controlled or uncontrolled
   const isControlled = externalIsOpen !== undefined;
   const isOpen = isControlled ? externalIsOpen : internalIsOpen;
 
@@ -42,102 +41,106 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen: externalIsOpen, o
     scrollToBottom();
   }, [messages, isOpen]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() || isTyping) return;
+    if (!inputValue.trim()) return;
 
-    const userText = inputValue;
-    const userMsgId = Date.now();
-    
-    setMessages(prev => [...prev, { id: userMsgId, text: userText, sender: 'user' }]);
+    const newUserMessage: Message = {
+      id: Date.now(),
+      text: inputValue,
+      sender: 'user'
+    };
+
+    setMessages(prev => [...prev, newUserMessage]);
     setInputValue('');
     setIsTyping(true);
 
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const botMsgId = userMsgId + 1;
-      
-      // Placeholder for streaming bot message
-      setMessages(prev => [...prev, { id: botMsgId, text: '', sender: 'bot' }]);
-
-      const result = await ai.models.generateContentStream({
-        model: 'gemini-3-flash-preview',
-        contents: userText,
-        config: {
-            systemInstruction: "Anda adalah asisten cerdas untuk Komunitas UMKM Naik Kelas di Indonesia. Tugas Anda adalah membantu pelaku UMKM dengan saran bisnis, tips pemasaran, regulasi lokal (seperti NIB/BPOM), dan motivasi. Gunakan bahasa Indonesia yang ramah, profesional, dan mudah dimengerti. Jika ditanya tentang fitur web ini, sebutkan kita punya Forum, Marketplace, dan Event Pelatihan.",
-            temperature: 0.7,
-            topP: 0.95,
-        }
-      });
-
-      let fullResponse = "";
-      for await (const chunk of result) {
-        const chunkText = chunk.text;
-        fullResponse += chunkText;
-        setMessages(prev => prev.map(msg => 
-          msg.id === botMsgId ? { ...msg, text: fullResponse } : msg
-        ));
-      }
-    } catch (error) {
-      console.error("AI Chat Error:", error);
-      setMessages(prev => [...prev, { id: Date.now(), text: "Maaf, koneksi ke otak AI saya terganggu. Coba lagi sebentar lagi ya.", sender: 'bot' }]);
-    } finally {
+    // Simulate AI response
+    setTimeout(() => {
+      const botResponse = getBotResponse(newUserMessage.text);
+      setMessages(prev => [...prev, { id: Date.now(), text: botResponse, sender: 'bot' }]);
       setIsTyping(false);
+    }, 1000 + Math.random() * 1000);
+  };
+
+  const getBotResponse = (input: string): string => {
+    const lowerInput = input.toLowerCase();
+    if (lowerInput.includes('daftar') || lowerInput.includes('gabung')) {
+      return "Untuk bergabung, Anda bisa klik tombol 'Daftar' di pojok kanan atas halaman. Gratis!";
+    } else if (lowerInput.includes('produk') || lowerInput.includes('jual')) {
+      return "Anda bisa mulai menjual produk dengan masuk ke akun Anda, lalu klik tombol 'Jual Produk' di halaman Marketplace atau Header.";
+    } else if (lowerInput.includes('event') || lowerInput.includes('acara')) {
+      return "Kami memiliki banyak event menarik! Cek halaman 'Event & Pelatihan' untuk jadwal terbaru webinar dan workshop.";
+    } else if (lowerInput.includes('siapa') || lowerInput.includes('tentang')) {
+      return "Saya adalah asisten AI untuk Komunitas UMKM Naik Kelas, siap membantu menjawab pertanyaan dasar Anda seputar platform ini.";
+    } else {
+      return "Maaf, saya belum mengerti pertanyaan spesifik itu. Namun, Anda bisa menjelajahi menu di atas atau menghubungi tim support kami di halaman Kontak.";
     }
   };
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+      {/* Chat Window */}
       {isOpen && (
-        <div className="mb-4 w-[380px] max-w-[calc(100vw-3rem)] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col animate-fade-in-up h-[550px]">
-          <div className="bg-gradient-to-r from-primary-600 to-indigo-700 p-4 flex justify-between items-center text-white shadow-lg">
-            <div className="flex items-center space-x-3">
-              <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
-                <ChatBotIcon className="h-6 w-6 text-white" />
+        <div className="mb-4 w-[350px] max-w-[calc(100vw-3rem)] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col animate-fade-in-up h-[500px]">
+          {/* Header */}
+          <div className="bg-primary-600 p-4 flex justify-between items-center text-white">
+            <div className="flex items-center space-x-2">
+              <div className="bg-white/20 p-1.5 rounded-full">
+                <ChatBotIcon className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h3 className="font-bold text-sm tracking-wide uppercase">Mentor AI Bisnis</h3>
-                <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                    <p className="text-[10px] text-primary-100 font-bold uppercase">Online & Siap Membantu</p>
-                </div>
+                <h3 className="font-bold text-sm">Asisten UMKM</h3>
+                <p className="text-xs text-primary-100">Online</p>
               </div>
             </div>
-            <button onClick={toggleChat} className="text-white/80 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-lg">
-              <CloseIcon className="h-6 w-6" />
+            <button onClick={toggleChat} className="text-white/80 hover:text-white transition-colors">
+              <CloseIcon className="h-5 w-5" />
             </button>
           </div>
 
-          <div className="flex-grow p-4 overflow-y-auto bg-gray-50/50 space-y-4 custom-scrollbar">
+          {/* Messages Area */}
+          <div className="flex-grow p-4 overflow-y-auto bg-gray-50 space-y-4">
             {messages.map((msg) => (
               <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div 
-                  className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                  className={`max-w-[80%] px-4 py-2 rounded-2xl text-sm ${
                     msg.sender === 'user' 
-                      ? 'bg-primary-600 text-white rounded-br-none shadow-md' 
-                      : 'bg-white border border-gray-100 text-gray-800 rounded-bl-none shadow-sm'
+                      ? 'bg-primary-600 text-white rounded-br-none' 
+                      : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm'
                   }`}
                 >
-                  {msg.text || (msg.sender === 'bot' && <div className="flex gap-1 py-1"><span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce"></span><span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce [animation-delay:0.2s]"></span><span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce [animation-delay:0.4s]"></span></div>)}
+                  {msg.text}
                 </div>
               </div>
             ))}
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-bl-none shadow-sm">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                  </div>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-gray-100 flex items-center space-x-2">
+          {/* Input Area */}
+          <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-gray-100 flex items-center space-x-2">
             <input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Tanya mentor bisnis AI..."
-              className="flex-grow px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-              disabled={isTyping}
+              placeholder="Tulis pesan..."
+              className="flex-grow px-4 py-2 border border-gray-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
             <button 
               type="submit" 
               disabled={!inputValue.trim() || isTyping}
-              className="p-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all shadow-md active:scale-95"
+              className="p-2 bg-primary-600 text-white rounded-full hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             >
               <PaperAirplaneIcon className="h-5 w-5 transform rotate-90" />
             </button>
@@ -145,16 +148,22 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ isOpen: externalIsOpen, o
         </div>
       )}
 
+      {/* Floating Action Button */}
       <button
         onClick={toggleChat}
-        className="group flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-600 to-indigo-600 text-white rounded-2xl shadow-xl hover:shadow-primary-500/40 hover:scale-110 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-primary-200 relative overflow-hidden"
+        className="group flex items-center justify-center w-14 h-14 bg-primary-600 text-white rounded-full shadow-lg hover:bg-primary-700 hover:scale-110 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-primary-300"
         aria-label="Buka Chat Assistant"
       >
-        <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
         {isOpen ? (
-          <CloseIcon className="h-7 w-7 relative z-10" />
+          <CloseIcon className="h-6 w-6" />
         ) : (
-          <ChatBotIcon className="h-8 w-8 relative z-10 animate-pulse" />
+          <ChatBotIcon className="h-7 w-7" />
+        )}
+        {/* Tooltip for button when closed */}
+        {!isOpen && (
+          <span className="absolute right-16 bg-gray-900 text-white text-xs font-medium px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            Tanya Asisten
+          </span>
         )}
       </button>
     </div>

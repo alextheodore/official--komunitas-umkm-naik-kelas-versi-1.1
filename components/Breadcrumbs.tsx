@@ -2,10 +2,6 @@
 import React from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { ChevronRightIcon } from './icons';
-import { allProductsData } from '../data/products';
-import { allEventsData } from '../pages/EventsPage';
-import { allArticlesData } from '../pages/BlogPage';
-import { allForumThreads } from '../data/forum';
 
 const pathMap: { [key: string]: string } = {
   login: 'Masuk',
@@ -32,7 +28,6 @@ const Breadcrumbs: React.FC = () => {
   const [searchParams] = useSearchParams();
   const pathnames = location.pathname.split('/').filter((x) => x);
 
-  // Don't render breadcrumbs on the homepage
   if (pathnames.length === 0) {
     return null;
   }
@@ -55,35 +50,20 @@ const Breadcrumbs: React.FC = () => {
             
             let displayName = pathMap[value] || value.charAt(0).toUpperCase() + value.slice(1);
               
-            // Handle Dynamic IDs lookup
-            // FIX: Use string comparison as IDs are now strings
-            const isPotentialId = !isNaN(Number(value)) || value.includes('-') || value.length > 5;
+            // Deteksi ID (UUID atau string acak panjang)
+            const isPotentialId = value.length > 20 || (index > 0 && ['marketplace', 'events', 'blog', 'forum'].includes(pathnames[index-1]));
+            
             if (isPotentialId) {
-                const prevSegment = pathnames[index - 1];
-                const id = value;
-                
-                if (prevSegment === 'marketplace') {
-                    const product = allProductsData.find(p => p.id === id);
-                    displayName = product ? product.name : 'Detail Produk';
-                } else if (prevSegment === 'sellers') {
-                    displayName = 'Detail Penjual';
-                } else if (prevSegment === 'blog') {
-                    const article = allArticlesData.find(a => a.id === id);
-                    displayName = article ? article.title : 'Detail Artikel';
-                } else if (prevSegment === 'forum') {
-                    const thread = allForumThreads.find(t => t.id === id);
-                    displayName = thread ? thread.title : 'Detail Diskusi';
-                } else if (prevSegment === 'events') {
-                    const event = allEventsData.find(e => e.id === id);
-                    displayName = event ? event.title : 'Detail Event';
-                }
+                const parent = pathnames[index - 1];
+                if (parent === 'marketplace') displayName = 'Detail Produk';
+                else if (parent === 'events') displayName = 'Detail Event';
+                else if (parent === 'blog') displayName = 'Detail Artikel';
+                else if (parent === 'forum') displayName = 'Diskusi';
+                else displayName = 'Detail';
             }
 
             const isMarketplaceSegment = value === 'marketplace';
-            // Only show category crumb if it exists and is not 'Semua'
             const showCategoryCrumb = isMarketplaceSegment && categoryFilter && categoryFilter !== 'Semua';
-            
-            // If we inject a category crumb, this segment becomes a parent link, unless it's the very last segment anyway without query params
             const isCurrentSegmentLast = isLastPathname && !showCategoryCrumb;
 
             return (
@@ -110,7 +90,6 @@ const Breadcrumbs: React.FC = () => {
                             <ChevronRightIcon className="h-3 w-3 mx-1 flex-shrink-0" />
                         </li>
                         <li className="flex items-center">
-                            {/* If we are at the end of path (listing page), this crumb is the active page text. */}
                             {isLastPathname ? (
                                  <span className="text-xs font-bold text-gray-800" aria-current="page">
                                     {categoryFilter}
