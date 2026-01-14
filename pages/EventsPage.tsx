@@ -6,13 +6,6 @@ import CardSkeleton from '../components/skeletons/CardSkeleton';
 import { SparklesIcon } from '../components/icons';
 import { supabase } from '../lib/supabase';
 
-// FIX: Exporting mock data for SearchModal and demo purposes
-export const allEventsData: Event[] = [
-    { id: '1', date: '2024-07-25', title: 'Digital Marketing 101 untuk UMKM', description: 'Pelajari dasar-dasar pemasaran digital.', image: 'https://picsum.photos/seed/event1/400/300', category: 'Webinar' },
-    { id: '2', date: '2024-08-10', title: 'Workshop Manajemen Keuangan', description: 'Kelola keuangan bisnis Anda dengan efektif.', image: 'https://picsum.photos/seed/event2/400/300', category: 'Workshop' },
-    { id: '3', date: '2024-08-18', title: 'Sesi Networking Bulanan', description: 'Bertemu and berkenalan dengan anggota.', image: 'https://picsum.photos/seed/event3/400/300', category: 'Networking' },
-];
-
 const EventsPage: React.FC = () => {
     const [events, setEvents] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
@@ -104,6 +97,7 @@ const EventsPage: React.FC = () => {
                 ) : (
                     <div className="text-center py-16">
                         <h2 className="text-2xl font-bold text-gray-800">Tidak Ada Event</h2>
+                        <p className="text-gray-500 mt-2">Nantikan agenda menarik kami selanjutnya!</p>
                     </div>
                 )}
             </div>

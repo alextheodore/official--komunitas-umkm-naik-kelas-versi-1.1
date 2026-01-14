@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import type { Event } from '../types';
-import { CalendarIcon, CheckCircleIcon, SpinnerIcon } from '../components/icons';
+import { CalendarIcon, CheckCircleIcon, SpinnerIcon, ExclamationCircleIcon } from '../components/icons';
 import DetailPageSkeleton from '../components/skeletons/DetailPageSkeleton';
 import EventCard from '../components/EventCard';
 import { supabase } from '../lib/supabase';
@@ -35,7 +35,6 @@ const RegistrationForm: React.FC<{ event: Event }> = ({ event }) => {
         e.preventDefault();
         if (!validateForm()) return;
         setIsSubmitting(true);
-        // Simulasi pendaftaran
         setTimeout(() => {
             setIsSubmitted(true);
             setIsSubmitting(false);
@@ -89,15 +88,17 @@ const EventDetailPage: React.FC = () => {
 
     useEffect(() => {
         const fetchEventData = async () => {
+            if (!eventId) return;
             setLoading(true);
             try {
                 const { data, error } = await supabase
                     .from('events')
                     .select('*')
                     .eq('id', eventId)
-                    .single();
+                    .maybeSingle();
 
                 if (error) throw error;
+                
                 if (data) {
                     setEvent(data);
                     document.title = `${data.title} - Event UMKM`;
@@ -118,16 +119,18 @@ const EventDetailPage: React.FC = () => {
             }
         };
 
-        if (eventId) fetchEventData();
+        fetchEventData();
     }, [eventId]);
 
     if (loading) return <DetailPageSkeleton />;
 
     if (!event) {
         return (
-            <div className="text-center py-20">
-                <h1 className="text-3xl font-bold text-gray-800">Event tidak ditemukan</h1>
-                <Link to="/events" className="mt-6 inline-block px-6 py-3 text-white bg-primary-600 rounded-full hover:bg-primary-700">
+            <div className="text-center py-32 bg-gray-50 min-h-screen">
+                <ExclamationCircleIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h1 className="text-3xl font-extrabold text-gray-800">Event tidak ditemukan</h1>
+                <p className="mt-2 text-gray-500">Mungkin link acara sudah kadaluwarsa atau event telah dihapus.</p>
+                <Link to="/events" className="mt-8 inline-block px-8 py-3 text-white bg-primary-600 rounded-full font-bold hover:bg-primary-700 shadow-lg">
                     Kembali ke Halaman Event
                 </Link>
             </div>
@@ -143,23 +146,23 @@ const EventDetailPage: React.FC = () => {
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="grid lg:grid-cols-3 gap-12 items-start">
                     <div className="lg:col-span-2">
-                        <div className="rounded-lg overflow-hidden shadow-lg mb-8">
-                            <img src={event.image} alt={event.title} className="w-full h-auto object-cover max-h-[500px]" />
+                        <div className="rounded-2xl overflow-hidden shadow-xl mb-8 border border-gray-100">
+                            <img src={event.image} alt={event.title} className="w-full h-auto object-cover max-h-[550px]" />
                         </div>
-                        <span className="text-sm font-semibold text-primary-600 uppercase">{event.category}</span>
-                        <h1 className="mt-2 text-3xl md:text-4xl font-extrabold text-gray-900">{event.title}</h1>
-                        <div className="mt-4 flex items-center space-x-2 text-gray-600">
+                        <span className="text-sm font-bold text-primary-600 uppercase tracking-widest bg-primary-50 px-3 py-1 rounded-md">{event.category}</span>
+                        <h1 className="mt-4 text-3xl md:text-4xl font-black text-gray-900 leading-tight">{event.title}</h1>
+                        <div className="mt-4 flex items-center space-x-2 text-gray-500 font-medium">
                             <CalendarIcon className="h-5 w-5" />
-                            <span className="font-semibold">{formattedDate}</span>
+                            <span>{formattedDate}</span>
                         </div>
-                        <article className="prose lg:prose-lg max-w-none mt-6 text-gray-700 whitespace-pre-wrap">
+                        <article className="prose lg:prose-lg max-w-none mt-8 text-gray-700 whitespace-pre-wrap leading-relaxed">
                             {event.description}
                         </article>
                     </div>
 
                     <aside className="lg:sticky top-24">
-                        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-md">
-                            <h3 className="text-xl font-bold text-gray-800 mb-4">Ikuti Event Ini</h3>
+                        <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-xl">
+                            <h3 className="text-xl font-black text-gray-900 mb-6">Reservasi Kehadiran</h3>
                             <RegistrationForm event={event} />
                         </div>
                     </aside>
@@ -167,9 +170,9 @@ const EventDetailPage: React.FC = () => {
             </div>
 
             {relatedEvents.length > 0 && (
-                <section className="bg-gray-50 py-16 mt-12">
+                <section className="bg-gray-50 py-20 mt-12 border-t border-gray-100">
                     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                        <h2 className="text-2xl font-bold text-center text-gray-800 mb-8">Agenda Serupa</h2>
+                        <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-10 text-center">Agenda Serupa</h2>
                         <div className="max-w-5xl mx-auto grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {relatedEvents.map(related => <EventCard key={related.id} event={related} />)}
                         </div>

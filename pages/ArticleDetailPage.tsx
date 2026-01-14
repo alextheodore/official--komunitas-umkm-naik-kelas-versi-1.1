@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Article } from '../types';
-import { CalendarIcon, FacebookIcon, TwitterIcon, LinkedInIcon, WhatsAppIcon, LinkIcon, CheckCircleIcon } from '../components/icons';
+import { CalendarIcon, FacebookIcon, WhatsAppIcon, LinkIcon, CheckCircleIcon, ExclamationCircleIcon } from '../components/icons';
 import ArticleCard from '../components/ArticleCard';
 import DetailPageSkeleton from '../components/skeletons/DetailPageSkeleton';
 
@@ -12,12 +12,10 @@ const ShareButtons: React.FC<{ url: string; title: string; summary: string }> = 
     const [copied, setCopied] = useState(false);
     const encodedUrl = encodeURIComponent(url);
     const encodedTitle = encodeURIComponent(title);
-    const encodedSummary = encodeURIComponent(summary);
 
     const shareLinks = {
         facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
         twitter: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`,
-        linkedin: `https://www.linkedin.com/shareArticle?mini=true&url=${encodedUrl}&title=${encodedTitle}&summary=${encodedSummary}`,
         whatsapp: `https://api.whatsapp.com/send?text=${encodedTitle}%20${encodedUrl}`,
     };
     
@@ -52,43 +50,46 @@ const ArticleDetailPage: React.FC = () => {
     const [article, setArticle] = useState<Article | null>(null);
     const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchArticleData = async () => {
+            if (!articleId) return;
+            
             setLoading(true);
+            setError(null);
+            
             try {
                 // Fetch main article
-                const { data, error } = await supabase
+                const { data, error: fetchError } = await supabase
                     .from('articles')
                     .select('*')
                     .eq('id', articleId)
-                    .single();
+                    .maybeSingle();
 
-                if (error) throw error;
+                if (fetchError) throw fetchError;
 
                 if (data) {
                     const mapped: Article = {
                         id: data.id,
-                        category: data.category,
-                        title: data.title,
-                        summary: data.summary,
-                        content: data.content,
-                        author: data.author,
-                        date: data.date,
-                        image: data.image,
-                        authorImage: data.author_image
+                        category: data.category || 'Berita',
+                        title: data.title || 'Tanpa Judul',
+                        summary: data.summary || '',
+                        content: data.content || '',
+                        author: data.author || 'Admin',
+                        date: data.date || data.created_at,
+                        image: data.image || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80',
+                        authorImage: data.author_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.author || 'Admin')}`
                     };
                     setArticle(mapped);
-                    
-                    // SEO
                     document.title = `${mapped.title} | UMKM Naik Kelas`;
 
                     // Fetch related articles
                     const { data: relatedData } = await supabase
                         .from('articles')
                         .select('*')
-                        .eq('category', data.category)
-                        .neq('id', data.id)
+                        .eq('category', mapped.category)
+                        .neq('id', mapped.id)
                         .limit(3);
                     
                     if (relatedData) {
@@ -101,27 +102,36 @@ const ArticleDetailPage: React.FC = () => {
                             author: r.author,
                             date: r.date,
                             image: r.image,
-                            authorImage: r.author_image
+                            authorImage: r.author_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(r.author || 'Admin')}`
                         })));
                     }
+                } else {
+                    setArticle(null);
                 }
-            } catch (err) {
+            } catch (err: any) {
                 console.error("Gagal ambil detail artikel:", err);
+                setError("Terjadi kesalahan saat memuat artikel.");
             } finally {
                 setLoading(false);
             }
         };
 
-        if (articleId) fetchArticleData();
+        fetchArticleData();
     }, [articleId]);
 
     if (loading) return <DetailPageSkeleton />;
 
-    if (!article) {
+    if (error || !article) {
         return (
-            <div className="text-center py-20">
-                <h1 className="text-3xl font-bold text-gray-800">Artikel tidak ditemukan</h1>
-                <Link to="/blog" className="mt-6 inline-block px-6 py-3 text-white bg-primary-600 rounded-full hover:bg-primary-700">
+            <div className="text-center py-32 bg-gray-50 min-h-screen flex flex-col items-center">
+                <ExclamationCircleIcon className="h-16 w-16 text-gray-300 mb-4" />
+                <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">
+                    {error ? "Terjadi Kesalahan" : "Artikel tidak ditemukan"}
+                </h1>
+                <p className="mt-2 text-gray-500 max-w-md mx-auto">
+                    Maaf, artikel yang Anda cari tidak tersedia atau telah dihapus dari database.
+                </p>
+                <Link to="/blog" className="mt-8 inline-block px-8 py-3 text-white bg-primary-600 rounded-full font-bold hover:bg-primary-700 transition-all shadow-lg">
                     Kembali ke Blog
                 </Link>
             </div>
@@ -137,30 +147,30 @@ const ArticleDetailPage: React.FC = () => {
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="max-w-4xl mx-auto">
                     <div className="text-center mb-8">
-                        <Link to="/blog" className="text-sm font-semibold text-primary-600 uppercase hover:underline">{article.category}</Link>
-                        <h1 className="mt-2 text-3xl md:text-5xl font-extrabold text-gray-900 leading-tight">{article.title}</h1>
-                        <div className="mt-6 flex justify-center items-center space-x-6 text-gray-500">
-                            <div className="flex items-center space-x-2">
-                                <img src={article.authorImage} alt={article.author} className="h-10 w-10 rounded-full border" />
-                                <span>{article.author}</span>
+                        <Link to="/blog" className="text-sm font-bold text-primary-600 uppercase hover:underline tracking-widest">{article.category}</Link>
+                        <h1 className="mt-4 text-3xl md:text-5xl font-black text-gray-900 leading-tight">{article.title}</h1>
+                        <div className="mt-8 flex justify-center items-center space-x-6 text-gray-500">
+                            <div className="flex items-center space-x-3">
+                                <img src={article.authorImage} alt={article.author} className="h-10 w-10 rounded-full border-2 border-primary-50 object-cover" />
+                                <span className="font-bold text-gray-700">{article.author}</span>
                             </div>
-                            <span className="hidden sm:block">|</span>
+                            <span className="hidden sm:block text-gray-200">|</span>
                             <div className="flex items-center space-x-2">
-                                <CalendarIcon className="h-5 w-5" />
-                                <span>{formattedDate}</span>
+                                <CalendarIcon className="h-5 w-5 text-gray-400" />
+                                <span className="text-sm">{formattedDate}</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="my-8 rounded-2xl overflow-hidden shadow-lg border">
-                        <img src={article.image} alt={article.title} className="w-full h-auto object-cover max-h-[500px]" />
+                    <div className="my-10 rounded-3xl overflow-hidden shadow-2xl border border-gray-100">
+                        <img src={article.image} alt={article.title} className="w-full h-auto object-cover max-h-[550px]" />
                     </div>
 
-                    <article className="prose lg:prose-xl max-w-none mx-auto text-gray-700 leading-relaxed whitespace-pre-wrap">
+                    <article className="prose prose-lg lg:prose-xl max-w-none mx-auto text-gray-700 leading-relaxed whitespace-pre-wrap font-medium">
                         {article.content}
                     </article>
 
-                    <div className="mt-12 pt-8 border-t border-gray-100">
+                    <div className="mt-16 pt-10 border-t border-gray-100">
                         <ShareButtons
                             url={window.location.href}
                             title={article.title}
@@ -171,11 +181,13 @@ const ArticleDetailPage: React.FC = () => {
             </div>
             
             {relatedArticles.length > 0 && (
-                <section className="bg-gray-50 py-16 mt-12">
+                <section className="bg-gray-50 py-20 mt-12 border-t border-gray-100">
                     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                        <h2 className="text-2xl font-bold text-center text-gray-800 mb-8">Artikel Terkait Lainnya</h2>
-                        <div className="max-w-5xl mx-auto grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {relatedArticles.map(related => <ArticleCard key={related.id} article={related} />)}
+                        <div className="max-w-5xl mx-auto">
+                            <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-10">Baca Artikel Terkait</h2>
+                            <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                {relatedArticles.map(related => <ArticleCard key={related.id} article={related} />)}
+                            </div>
                         </div>
                     </div>
                 </section>

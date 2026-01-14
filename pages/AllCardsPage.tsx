@@ -1,26 +1,27 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Feature, Event, Article, Benefit, Testimonial } from '../types';
 import { NetworkingIcon, LearningIcon, CollaborationIcon, ForumIcon, MarketplaceIcon } from '../components/icons';
+import { supabase } from '../lib/supabase';
 
 import FeatureCard from '../components/FeatureCard';
 import BenefitCard from '../components/BenefitCard';
 import TestimonialCard from '../components/TestimonialCard';
 import EventCard from '../components/EventCard';
 import ArticleCard from '../components/ArticleCard';
+import CardSkeleton from '../components/skeletons/CardSkeleton';
 
-// --- Mock Data ---
-
+// --- Static Mock Data for UI/Styling Elements ---
 const featuresData: Feature[] = [
-  { icon: <ForumIcon className="h-8 w-8 text-white" />, title: 'Forum Diskusi', description: 'Tempat berbagi ide, bertanya, and berdiskusi.' },
+  { icon: <ForumIcon className="h-8 w-8 text-white" />, title: 'Forum Diskusi', description: 'Tempat berbagi ide, bertanya, dan berdiskusi.' },
   { icon: <LearningIcon className="h-8 w-8 text-white" />, title: 'Event & Pelatihan', description: 'Ikuti webinar & workshop untuk tingkatkan kompetensi.' },
-  { icon: <MarketplaceIcon className="h-8 w-8 text-white" />, title: 'Marketplace', description: 'Pamerkan and jual produk Anda ke seluruh anggota.' },
+  { icon: <MarketplaceIcon className="h-8 w-8 text-white" />, title: 'Marketplace', description: 'Pamerkan dan jual produk Anda ke seluruh anggota.' },
 ];
 
 const benefitsData: Benefit[] = [
-    { icon: <NetworkingIcon className="h-10 w-10 text-primary-600" />, title: 'Networking Luas', description: 'Terhubung dengan para pelaku UMKM, mentor, and investor.' },
-    { icon: <LearningIcon className="h-10 w-10 text-primary-600" />, title: 'Belajar & Bertumbuh', description: 'Ikuti pelatihan, webinar, and workshop eksklusif.' },
-    { icon: <CollaborationIcon className="h-10 w-10 text-primary-600" />, title: 'Kolaborasi Bisnis', description: 'Temukan mitra bisnis potensial and ciptakan peluang baru.' },
+    { icon: <NetworkingIcon className="h-10 w-10 text-primary-600" />, title: 'Networking Luas', description: 'Terhubung dengan para pelaku UMKM, mentor, dan investor.' },
+    { icon: <LearningIcon className="h-10 w-10 text-primary-600" />, title: 'Belajar & Bertumbuh', description: 'Ikuti pelatihan, webinar, dan workshop eksklusif.' },
+    { icon: <CollaborationIcon className="h-10 w-10 text-primary-600" />, title: 'Kolaborasi Bisnis', description: 'Temukan mitra bisnis potensial dan ciptakan peluang baru.' },
 ];
 
 const testimonialsData: Testimonial[] = [
@@ -39,31 +40,18 @@ const testimonialsData: Testimonial[] = [
     {
         quote: "Workshop digital marketing yang saya ikuti sangat membuka wawasan.",
         author: "Andi Pratama",
-        role: "Founder Startup Teknologi",
+        role: "Founder UMKM Fashion",
         image: "https://picsum.photos/seed/testi3/100/100"
     }
 ];
 
-// FIX: Changed IDs from number to string to match Event interface
-const eventsData: Event[] = [
-    { id: '1', date: '2024-07-25', title: 'Digital Marketing 101 untuk UMKM', description: 'Pelajari dasar-dasar pemasaran digital.', image: 'https://picsum.photos/seed/event1/400/300', category: 'Webinar' },
-    { id: '2', date: '2024-08-10', title: 'Workshop Manajemen Keuangan', description: 'Kelola keuangan bisnis Anda dengan efektif.', image: 'https://picsum.photos/seed/event2/400/300', category: 'Workshop' },
-    { id: '3', date: '2024-08-18', title: 'Sesi Networking Bulanan', description: 'Bertemu and berkenalan dengan anggota.', image: 'https://picsum.photos/seed/event3/400/300', category: 'Networking' },
-];
-
-// FIX: Changed IDs from number to string to match Article interface
-const articlesData: Article[] = [
-    { id: '1', category: 'Tips Bisnis', title: '5 Cara Efektif Mengelola Stok Barang', summary: 'Manajemen stok yang baik adalah kunci efisiensi. Pelajari lima strategi praktis.', content: 'Manajemen stok yang baik adalah kunci efisiensi. Pelajari lima strategi praktis untuk mengoptimalkan persediaan. Dalam artikel ini, kita akan membahas pentingnya inventory turnover, metode FIFO and LIFO, serta penggunaan software untuk mempermudah pengelolaan stok.', author: 'Andi Pratama', date: '2024-07-20', image: 'https://picsum.photos/seed/blog1/400/250', authorImage: 'https://picsum.photos/seed/author1/40/40' },
-    { id: '2', category: 'Kolaborasi', title: 'Kisah Sukses Kolaborasi Antar Anggota', summary: 'Lihat bagaimana dua anggota berhasil menggabungkan kekuatan mereka.', content: 'Kolaborasi adalah kunci pertumbuhan di era modern. Artikel ini menceritakan kisah sukses antara pengrajin tas kulit and desainer pakaian dalam menciptakan lini produk fashion yang unik.', author: 'Siti Aminah', date: '2024-07-18', image: 'https://picsum.photos/seed/blog2/400/250', authorImage: 'https://picsum.photos/seed/author2/40/40' },
-    { id: '3', category: 'UMKM', title: 'Pentingnya Branding untuk Produk', summary: 'Branding bukan hanya logo. Pahami cara membangun identitas merek yang kuat.', content: 'Branding yang kuat dapat membedakan produk Anda dari kompetitor and membangun loyalitas pelanggan. Topik ini akan membahas elemen-elemen penting dalam branding, mulai dari menentukan target audiens, merancang identitas visual, hingga membangun narasi merek yang menarik.', author: 'Budi Santoso', date: '2024-07-15', image: 'https://picsum.photos/seed/blog3/400/250', authorImage: 'https://picsum.photos/seed/author3/40/40' },
-];
-
-
 // --- Helper Section Component ---
-
 const CardSection: React.FC<{ title: string; children: React.ReactNode; gridCols?: string }> = ({ title, children, gridCols = 'md:grid-cols-2 lg:grid-cols-3' }) => (
-    <section className="mb-16">
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-800 border-b pb-4 mb-8">{title}</h2>
+    <section className="mb-20">
+        <div className="flex items-center gap-4 mb-10">
+            <h2 className="text-2xl md:text-3xl font-black text-gray-900">{title}</h2>
+            <div className="h-px bg-gray-200 flex-grow"></div>
+        </div>
         <div className={`grid grid-cols-1 ${gridCols} gap-8`}>
             {children}
         </div>
@@ -71,15 +59,44 @@ const CardSection: React.FC<{ title: string; children: React.ReactNode; gridCols
 );
 
 // --- Main Page Component ---
-
 const AllCardsPage: React.FC = () => {
+    const [events, setEvents] = useState<Event[]>([]);
+    const [articles, setArticles] = useState<Article[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchLiveData = async () => {
+            setLoading(true);
+            try {
+                const [eventRes, articleRes] = await Promise.all([
+                    supabase.from('events').select('*').limit(3),
+                    supabase.from('articles').select('*').limit(3)
+                ]);
+
+                if (eventRes.data) setEvents(eventRes.data);
+                if (articleRes.data) {
+                    setArticles(articleRes.data.map((a: any) => ({
+                        ...a,
+                        authorImage: a.author_image
+                    })));
+                }
+            } catch (err) {
+                console.error("Gagal muat data kartu:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchLiveData();
+    }, []);
+
     return (
         <div className="bg-gray-50 min-h-screen">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <div className="text-center mb-12">
-                    <h1 className="text-4xl md:text-5xl font-extrabold text-primary-600">Koleksi Kartu Komponen</h1>
-                    <p className="mt-4 text-lg text-gray-600">
-                        Sebuah halaman untuk menampilkan semua komponen kartu yang digunakan dalam aplikasi.
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
+                <div className="text-center mb-20">
+                    <h1 className="text-4xl md:text-6xl font-black text-gray-900 tracking-tight">Katalog Komponen UI</h1>
+                    <p className="mt-4 text-xl text-gray-500 max-w-2xl mx-auto">
+                        Representasi visual dari berbagai kartu data yang terhubung langsung ke database Supabase.
                     </p>
                 </div>
 
@@ -96,12 +113,24 @@ const AllCardsPage: React.FC = () => {
                         {testimonialsData.map((item, index) => <TestimonialCard key={index} testimonial={item} />)}
                     </CardSection>
 
-                    <CardSection title="Event Cards" gridCols="md:grid-cols-3">
-                        {eventsData.map((item) => <EventCard key={item.id} event={item} />)}
+                    <CardSection title="Live Event Cards (dari Supabase)" gridCols="md:grid-cols-3">
+                        {loading ? (
+                            Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)
+                        ) : events.length > 0 ? (
+                            events.map((item) => <EventCard key={item.id} event={item} />)
+                        ) : (
+                            <p className="col-span-full text-center text-gray-400 py-10 bg-white rounded-xl border border-dashed border-gray-200">Tidak ada data event di database.</p>
+                        )}
                     </CardSection>
 
-                    <CardSection title="Article Cards" gridCols="md:grid-cols-3">
-                        {articlesData.map((item) => <ArticleCard key={item.id} article={item} />)}
+                    <CardSection title="Live Article Cards (dari Supabase)" gridCols="md:grid-cols-3">
+                        {loading ? (
+                            Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)
+                        ) : articles.length > 0 ? (
+                            articles.map((item) => <ArticleCard key={item.id} article={item} />)
+                        ) : (
+                            <p className="col-span-full text-center text-gray-400 py-10 bg-white rounded-xl border border-dashed border-gray-200">Tidak ada data artikel di database.</p>
+                        )}
                     </CardSection>
                 </div>
             </div>

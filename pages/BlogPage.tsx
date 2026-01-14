@@ -8,13 +8,6 @@ import { supabase } from '../lib/supabase';
 
 const ARTICLES_PER_PAGE = 6;
 
-// FIX: Exporting mock data for SearchModal and demo purposes
-export const allArticlesData: Article[] = [
-    { id: '1', category: 'Tips Bisnis', title: '5 Cara Efektif Mengelola Stok Barang', summary: 'Manajemen stok yang baik adalah kunci efisiensi. Pelajari lima strategi praktis.', content: 'Manajemen stok yang baik adalah kunci efisiensi. Pelajari lima strategi praktis untuk mengoptimalkan persediaan.', author: 'Andi Pratama', date: '2024-07-20', image: 'https://picsum.photos/seed/blog1/400/250', authorImage: 'https://picsum.photos/seed/author1/40/40' },
-    { id: '2', category: 'Kolaborasi', title: 'Kisah Sukses Kolaborasi Antar Anggota', summary: 'Lihat bagaimana dua anggota berhasil menggabungkan kekuatan mereka.', content: 'Kolaborasi adalah kunci pertumbuhan di era modern.', author: 'Siti Aminah', date: '2024-07-18', image: 'https://picsum.photos/seed/blog2/400/250', authorImage: 'https://picsum.photos/seed/author2/40/40' },
-    { id: '3', category: 'UMKM', title: 'Pentingnya Branding untuk Produk', summary: 'Branding bukan hanya logo. Pahami cara membangun identitas merek yang kuat.', content: 'Branding yang kuat dapat membedakan produk Anda dari kompetitor.', author: 'Budi Santoso', date: '2024-07-15', image: 'https://picsum.photos/seed/blog3/400/250', authorImage: 'https://picsum.photos/seed/author3/40/40' },
-];
-
 const getPaginationItems = (currentPage: number, totalPages: number): (number | '...')[] => {
     if (totalPages <= 7) {
         return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -84,8 +77,10 @@ const BlogPage: React.FC = () => {
         }
     }, [currentPage, loading]);
 
-    // FIX: Explicitly cast Array.from to string[] to avoid 'unknown' type error reported on line 80
-    const categories: string[] = ['Semua', ...(Array.from(new Set(articles.map(a => a.category))) as string[])];
+    const categories = useMemo(() => {
+        const unique = Array.from(new Set(articles.map(a => a.category))).filter(Boolean) as string[];
+        return ['Semua', ...unique];
+    }, [articles]);
 
     const filteredArticles = useMemo(() => {
         if (selectedCategory === 'Semua') return articles;
@@ -132,6 +127,7 @@ const BlogPage: React.FC = () => {
                 ) : (
                     <div className="text-center py-16">
                         <h2 className="text-2xl font-bold text-gray-800">Tidak Ada Artikel</h2>
+                        <p className="text-gray-500 mt-2">Belum ada konten yang tersedia di kategori ini.</p>
                     </div>
                 )}
                 

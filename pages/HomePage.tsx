@@ -1,78 +1,143 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { Event, Article } from '../types';
 import { Link } from 'react-router-dom';
-import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, SparklesIcon } from '../components/icons';
+import { ChevronLeftIcon, ChevronRightIcon, SparklesIcon } from '../components/icons';
 import EventCard from '../components/EventCard';
 import ArticleCard from '../components/ArticleCard';
 import CardSkeleton from '../components/skeletons/CardSkeleton';
 import { supabase } from '../lib/supabase';
 
+const heroSlides = [
+    {
+        id: 1,
+        tag: "Forum Diskusi Aktif",
+        title: <>Transformasi Digital <span className="text-accent">UMKM</span> Bersama Kami</>,
+        description: "Bertukar pikiran dan temukan solusi bersama para ahli dan sesama anggota komunitas UMKM Indonesia.",
+        image: "https://images.unsplash.com/photo-1556761175-b413da4baf72?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80",
+        ctaPrimary: { text: "Gabung Sekarang", link: "/register" },
+        ctaSecondary: { text: "Pelajari Program", link: "/programs" }
+    },
+    {
+        id: 2,
+        tag: "Marketplace Lokal",
+        title: <>Pamerkan Produk <span className="text-accent">Unggulan</span> Anda</>,
+        description: "Jangkau pasar yang lebih luas melalui ekosistem marketplace eksklusif untuk anggota komunitas.",
+        image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80",
+        ctaPrimary: { text: "Mulai Jualan", link: "/marketplace" },
+        ctaSecondary: { text: "Lihat Produk", link: "/marketplace" }
+    },
+    {
+        id: 3,
+        tag: "Edukasi & Pelatihan",
+        title: <>Tingkatkan <span className="text-accent">Skill</span> Bisnis Anda</>,
+        description: "Ikuti berbagai webinar dan workshop eksklusif dari para praktisi bisnis berpengalaman.",
+        image: "https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80",
+        ctaPrimary: { text: "Cek Jadwal", link: "/events" },
+        ctaSecondary: { text: "Daftar Webinar", link: "/events" }
+    },
+    {
+        id: 4,
+        tag: "Networking Luas",
+        title: <>Koneksi <span className="text-accent">Strategis</span> Antar Pengusaha</>,
+        description: "Bangun jaringan dengan investor, mentor, dan ribuan pelaku UMKM dari seluruh pelosok negeri.",
+        image: "https://images.unsplash.com/photo-1515187029135-18ee286d815b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80",
+        ctaPrimary: { text: "Cari Relasi", link: "/forum" },
+        ctaSecondary: { text: "Buka Diskusi", link: "/forum" }
+    }
+];
+
 const HeroSection: React.FC = () => {
-    const [currentSlide, setCurrentSlide] = useState(1);
+    const [currentIndex, setCurrentIndex] = useState(0);
     const [counts, setCounts] = useState({ users: 0, events: 0, products: 0 });
-    const totalSlides = 4;
+    const totalSlides = heroSlides.length;
+
+    const nextSlide = useCallback(() => {
+        setCurrentIndex((prev) => (prev + 1) % totalSlides);
+    }, [totalSlides]);
+
+    const prevSlide = () => {
+        setCurrentIndex((prev) => (prev - 1 + totalSlides) % totalSlides);
+    };
+
+    // Auto-play effect
+    useEffect(() => {
+        const timer = setInterval(nextSlide, 6000);
+        return () => clearInterval(timer);
+    }, [nextSlide]);
 
     useEffect(() => {
         const fetchCounts = async () => {
-            const [u, e, p] = await Promise.all([
-                supabase.from('profiles').select('*', { count: 'exact', head: true }),
-                supabase.from('events').select('*', { count: 'exact', head: true }),
-                supabase.from('products').select('*', { count: 'exact', head: true })
-            ]);
-            setCounts({
-                users: u.count || 0,
-                events: e.count || 0,
-                products: p.count || 0
-            });
+            try {
+                const [u, e, p] = await Promise.all([
+                    supabase.from('profiles').select('*', { count: 'exact', head: true }),
+                    supabase.from('events').select('*', { count: 'exact', head: true }),
+                    supabase.from('products').select('*', { count: 'exact', head: true })
+                ]);
+                setCounts({
+                    users: u.count || 0,
+                    events: e.count || 0,
+                    products: p.count || 0
+                });
+            } catch (err) {
+                console.error("Failed to fetch homepage stats", err);
+            }
         };
         fetchCounts();
     }, []);
 
+    const currentSlide = heroSlides[currentIndex];
+
     return (
-        <section className="relative h-[90vh] min-h-[600px] flex flex-col justify-center overflow-hidden bg-gray-900">
+        <section className="relative h-[90vh] min-h-[650px] flex flex-col justify-center overflow-hidden bg-gray-900 transition-all duration-700">
+            {/* Background Layer with Crossfade-like effect */}
             <div className="absolute inset-0 z-0">
                 <img 
-                    src="https://images.unsplash.com/photo-1556761175-b413da4baf72?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80" 
+                    key={currentSlide.image}
+                    src={currentSlide.image} 
                     alt="Background Hero" 
-                    className="w-full h-full object-cover opacity-40"
+                    className="w-full h-full object-cover opacity-40 animate-fade-in"
+                    style={{ animationDuration: '1.2s' }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80"></div>
+                <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black/90"></div>
             </div>
 
+            {/* Content Layer */}
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-                <div className="inline-flex items-center px-6 py-2 rounded-full border border-white/20 bg-white/5 backdrop-blur-md mb-8 animate-fade-in-up">
-                    <span className="text-white font-bold tracking-widest text-sm uppercase">Forum Diskusi Aktif</span>
+                <div key={`tag-${currentIndex}`} className="inline-flex items-center px-6 py-2 rounded-full border border-white/20 bg-white/5 backdrop-blur-md mb-8 animate-fade-in-up">
+                    <span className="text-white font-bold tracking-widest text-sm uppercase">{currentSlide.tag}</span>
                 </div>
 
-                <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white leading-tight mb-6 animate-fade-in-up [animation-delay:0.2s]">
-                    Transformasi Digital <span className="text-accent">UMKM</span> <br /> Bersama Kami
+                <h1 key={`title-${currentIndex}`} className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white leading-tight mb-6 animate-fade-in-up [animation-delay:0.2s]">
+                    {currentSlide.title}
                 </h1>
 
-                <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-10 leading-relaxed animate-fade-in-up [animation-delay:0.4s]">
-                    Bertukar pikiran dan temukan solusi bersama para ahli dan sesama anggota komunitas UMKM Indonesia.
+                <p key={`desc-${currentIndex}`} className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-10 leading-relaxed animate-fade-in-up [animation-delay:0.4s]">
+                    {currentSlide.description}
                 </p>
 
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up [animation-delay:0.6s]">
+                <div key={`actions-${currentIndex}`} className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up [animation-delay:0.6s]">
                     <Link 
-                        to="/register" 
+                        to={currentSlide.ctaPrimary.link} 
                         className="w-full sm:w-auto px-10 py-4 bg-accent hover:bg-accent-600 text-gray-900 font-extrabold rounded-full shadow-[0_0_20px_rgba(255,193,7,0.4)] transition-all transform hover:scale-105 flex items-center justify-center gap-2"
                     >
-                        Gabung Sekarang <span className="text-xl">→</span>
+                        {currentSlide.ctaPrimary.text} <span className="text-xl">→</span>
                     </Link>
                     <Link 
-                        to="/programs" 
+                        to={currentSlide.ctaSecondary.link} 
                         className="w-full sm:w-auto px-10 py-4 border-2 border-white/30 hover:border-white text-white font-bold rounded-full backdrop-blur-sm transition-all hover:bg-white/10"
                     >
-                        Pelajari Program
+                        {currentSlide.ctaSecondary.text}
                     </Link>
                 </div>
             </div>
 
+            {/* Bottom Info & Navigation Layer */}
             <div className="absolute bottom-0 left-0 w-full z-20">
                 <div className="container mx-auto px-4 pb-10">
                     <div className="flex flex-col md:flex-row items-center justify-center gap-12 lg:gap-24">
-                        <div className="flex flex-wrap justify-center gap-12 lg:gap-20">
+                        {/* Stats Info */}
+                        <div className="flex flex-wrap justify-center gap-12 lg:gap-20 order-2 md:order-1">
                             <div className="text-center md:text-left">
                                 <p className="text-3xl font-black text-white leading-none">{counts.users.toLocaleString('id-ID')}</p>
                                 <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-2">Anggota Terdaftar</p>
@@ -87,29 +152,45 @@ const HeroSection: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-6">
-                            <button className="p-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all active:scale-90">
+                        {/* Slider Controls */}
+                        <div className="flex items-center gap-6 order-1 md:order-2">
+                            <button 
+                                onClick={prevSlide}
+                                className="p-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all active:scale-90"
+                                aria-label="Previous Slide"
+                            >
                                 <ChevronLeftIcon className="w-5 h-5" />
                             </button>
                             
                             <div className="flex items-center gap-4 bg-black/40 px-6 py-2.5 rounded-full border border-white/5 shadow-inner">
-                                <span className="text-white font-bold text-sm tracking-widest">{currentSlide} / {totalSlides}</span>
+                                <span className="text-white font-bold text-sm tracking-widest">{currentIndex + 1} / {totalSlides}</span>
                                 <div className="flex gap-2">
-                                    <div className="w-8 h-2 bg-accent rounded-full"></div>
-                                    <div className="w-2 h-2 bg-white/20 rounded-full"></div>
-                                    <div className="w-2 h-2 bg-white/20 rounded-full"></div>
-                                    <div className="w-2 h-2 bg-white/20 rounded-full"></div>
+                                    {heroSlides.map((_, idx) => (
+                                        <div 
+                                            key={idx} 
+                                            className={`h-2 rounded-full transition-all duration-300 ${currentIndex === idx ? 'w-8 bg-accent' : 'w-2 bg-white/20'}`}
+                                        ></div>
+                                    ))}
                                 </div>
                             </div>
 
-                            <button className="p-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all active:scale-90">
+                            <button 
+                                onClick={nextSlide}
+                                className="p-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all active:scale-90"
+                                aria-label="Next Slide"
+                            >
                                 <ChevronRightIcon className="w-5 h-5" />
                             </button>
                         </div>
                     </div>
                 </div>
+                {/* Progress Bar (Manual Resetting) */}
                 <div className="h-1.5 w-full bg-white/5 flex justify-center">
-                    <div className="h-full w-2/3 bg-accent shadow-[0_0_10px_rgba(255,193,7,0.5)]"></div>
+                    <div 
+                        key={`progress-${currentIndex}`}
+                        className="h-full bg-accent shadow-[0_0_10px_rgba(255,193,7,0.5)] animate-progress"
+                        style={{ width: '66.6%', animationDuration: '6s' }}
+                    ></div>
                 </div>
             </div>
         </section>
