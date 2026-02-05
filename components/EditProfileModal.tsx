@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { CloseIcon, SpinnerIcon } from './icons';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -12,7 +14,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose }) 
   const [formData, setFormData] = useState({
     name: '',
     businessName: '',
-    email: '',
   });
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string>('');
@@ -24,7 +25,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose }) 
       setFormData({
         name: currentUser.name,
         businessName: currentUser.businessName,
-        email: currentUser.email,
       });
       setPreviewImage(currentUser.profilePicture);
     }
@@ -46,26 +46,59 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose }) 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      // Validasi ukuran (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        alert("Ukuran gambar terlalu besar (Maksimal 2MB)");
+        return;
+      }
       setProfileImage(file);
       setPreviewImage(URL.createObjectURL(file));
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentUser) return;
+    
     setIsLoading(true);
 
-    // Simulate API delay
-    setTimeout(() => {
-      updateProfile({
+    try {
+      let finalAvatarUrl = currentUser.profilePicture;
+
+      // 1. Upload ke Supabase Storage jika ada gambar baru
+      if (profileImage) {
+        const fileExt = profileImage.name.split('.').pop();
+        const fileName = `${currentUser.id}-${Math.random()}.${fileExt}`;
+        const filePath = `avatars/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, profileImage);
+
+        if (uploadError) throw uploadError;
+
+        // Ambil Public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
+        
+        finalAvatarUrl = publicUrl;
+      }
+
+      // 2. Update metadata di AuthContext & Profiles Table
+      await updateProfile({
         name: formData.name,
         businessName: formData.businessName,
-        // In a real app, we would upload the file to storage and get a URL
-        profilePicture: profileImage ? previewImage : currentUser?.profilePicture,
+        profilePicture: finalAvatarUrl,
       });
-      setIsLoading(false);
+
       onClose();
-    }, 1000);
+    } catch (error: any) {
+      console.error("Gagal memperbarui profil:", error);
+      alert("Terjadi kesalahan: " + (error.message || "Gagal upload gambar"));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!isOpen || !currentUser) return null;
@@ -74,12 +107,12 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose }) 
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
         ref={modalRef}
-        className="relative bg-white rounded-lg shadow-xl w-full max-w-md m-4 transform transition-all duration-300 ease-out"
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all duration-300 ease-out animate-fade-in-up"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
@@ -87,79 +120,85 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose }) 
             <h2 className="text-2xl font-bold text-gray-800">Edit Profil</h2>
             <button
               onClick={onClose}
-              className="p-1 rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+              className="p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
               aria-label="Tutup modal"
             >
               <CloseIcon className="h-6 w-6" />
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            <div className="flex flex-col items-center mb-4">
-              <div className="relative h-24 w-24 rounded-full overflow-hidden border-2 border-gray-200 mb-2">
-                <img src={previewImage} alt="Preview" className="h-full w-full object-cover" />
+          <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+            <div className="flex flex-col items-center">
+              <div className="relative group">
+                <div className="h-28 w-28 rounded-full overflow-hidden border-4 border-primary-50 shadow-md">
+                  <img src={previewImage} alt="Preview" className="h-full w-full object-cover" />
+                </div>
+                <label 
+                  htmlFor="profile-image-upload" 
+                  className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 rounded-full cursor-pointer transition-opacity text-xs font-bold"
+                >
+                  Ubah Foto
+                </label>
+                <input id="profile-image-upload" type="file" accept="image/*" className="sr-only" onChange={handleImageChange} />
               </div>
-              <label htmlFor="profile-image" className="cursor-pointer text-sm font-medium text-primary-600 hover:text-primary-500">
-                Ubah Foto
-                <input id="profile-image" type="file" accept="image/*" className="sr-only" onChange={handleImageChange} />
-              </label>
+              <p className="mt-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest">PNG atau JPG (Maks. 2MB)</p>
             </div>
 
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nama Lengkap</label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                required
-                value={formData.name}
-                onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-              />
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="name" className="block text-sm font-bold text-gray-700 mb-1">Nama Lengkap</label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  required
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="businessName" className="block text-sm font-bold text-gray-700 mb-1">Nama Bisnis</label>
+                <input
+                  type="text"
+                  id="businessName"
+                  name="businessName"
+                  required
+                  value={formData.businessName}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-400 mb-1">Email (Terkunci)</label>
+                <input
+                  type="email"
+                  disabled
+                  value={currentUser.email}
+                  className="w-full px-4 py-2.5 border border-gray-100 bg-gray-50 text-gray-400 rounded-xl cursor-not-allowed"
+                />
+              </div>
             </div>
 
-            <div>
-              <label htmlFor="businessName" className="block text-sm font-medium text-gray-700">Nama Bisnis</label>
-              <input
-                type="text"
-                id="businessName"
-                name="businessName"
-                required
-                value={formData.businessName}
-                onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email (Tidak dapat diubah)</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                disabled
-                value={formData.email}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-gray-100 text-gray-500 rounded-md shadow-sm sm:text-sm cursor-not-allowed"
-              />
-            </div>
-
-            <div className="pt-4 flex justify-end space-x-3">
+            <div className="pt-4 flex gap-3">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isLoading}
-                className="px-5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
+                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-gray-50 transition-all"
               >
                 Batal
               </button>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="px-5 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md shadow-sm hover:bg-primary-700 flex items-center"
+                className="flex-1 px-4 py-3 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 shadow-lg shadow-primary-200 transition-all flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>
-                    <SpinnerIcon className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
+                    <SpinnerIcon className="animate-spin h-5 w-5" />
                     Menyimpan...
                   </>
                 ) : (

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Event, Article } from '../types';
 import { Link } from 'react-router-dom';
-import { ChevronLeftIcon, ChevronRightIcon, SparklesIcon } from '../components/icons';
+import { ChevronLeftIcon, ChevronRightIcon, SparklesIcon, LogoIcon } from '../components/icons';
 import EventCard from '../components/EventCard';
 import ArticleCard from '../components/ArticleCard';
 import CardSkeleton from '../components/skeletons/CardSkeleton';
@@ -197,6 +197,56 @@ const HeroSection: React.FC = () => {
     );
 };
 
+const AboutSection: React.FC = () => (
+    <section id="about" className="py-20 bg-gray-50 overflow-hidden">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+                 <div className="relative">
+                    <div className="relative max-w-md mx-auto">
+                        {/* Decorative background shape */}
+                        <div className="absolute -top-4 -left-4 w-full h-full bg-primary-200 rounded-2xl transform rotate-3"></div>
+                        
+                        {/* The image with its own frame */}
+                        <div className="relative bg-white p-2 rounded-2xl shadow-2xl border-2 border-gray-50">
+                            <img 
+                                src="https://picsum.photos/seed/ketua/500/600" 
+                                alt="Ketua Komunitas UMKM Naik Kelas" 
+                                className="w-full h-auto rounded-xl" 
+                            />
+                        </div>
+                        
+                        {/* Small logo-like element */}
+                        <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-white rounded-full shadow-lg flex items-center justify-center border-4 border-primary-50">
+                            <LogoIcon className="h-10 w-10 text-primary-500" />
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <span className="text-primary-600 font-semibold uppercase tracking-wider">TENTANG KAMI</span>
+                    <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-gray-900">Misi Kami Adalah Memberdayakan UMKM Indonesia</h2>
+                    <p className="mt-4 text-gray-600 leading-relaxed">
+                        Kami percaya bahwa UMKM adalah tulang punggung ekonomi Indonesia. Visi kami adalah menciptakan ekosistem digital yang solid di mana setiap UMKM memiliki kesempatan yang sama untuk belajar, berkolaborasi, dan bertumbuh secara berkelanjutan.
+                    </p>
+                    <ul className="mt-6 space-y-4">
+                        <li className="flex items-start">
+                            <span className="flex-shrink-0 h-6 w-6 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mr-3 font-bold">✓</span>
+                            <span className="text-gray-700">Menyediakan platform untuk networking dan berbagi pengetahuan.</span>
+                        </li>
+                        <li className="flex items-start">
+                            <span className="flex-shrink-0 h-6 w-6 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mr-3 font-bold">✓</span>
+                            <span className="text-gray-700">Mengadakan event dan pelatihan berkualitas untuk peningkatan kapasitas.</span>
+                        </li>
+                        <li className="flex items-start">
+                            <span className="flex-shrink-0 h-6 w-6 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mr-3 font-bold">✓</span>
+                            <span className="text-gray-700">Membuka akses pasar yang lebih luas melalui marketplace komunitas.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+);
+
 const BlogSection: React.FC = () => {
     const [articles, setArticles] = useState<Article[]>([]);
     const [loading, setLoading] = useState(true);
@@ -313,6 +363,7 @@ const HomePage: React.FC = () => {
     return (
         <div className="min-h-screen">
             <HeroSection />
+            <AboutSection />
             <BlogSection />
             <EventsSection />
             
