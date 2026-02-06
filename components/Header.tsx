@@ -128,9 +128,9 @@ const Header: React.FC<HeaderProps> = ({ onOpenChat }) => {
               <div className="flex items-center justify-between h-20">
                 {/* Logo Section */}
                 <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={() => navigate('/')}>
-                  <div className="flex items-center space-x-2">
-                    <LogoIcon className="h-8 w-auto text-primary-600" />
-                    <span className="text-xl font-bold text-gray-800 hidden sm:inline tracking-tight hover:text-primary-600 transition-colors">Komunitas UMKM Naik Kelas</span>
+                  <div className="flex items-center space-x-3">
+                    <LogoIcon className="h-14 w-auto text-primary-600" />
+                    <span className="text-xl font-bold text-gray-800 hidden sm:inline tracking-tight hover:text-primary-600 transition-colors">UMKM Naik Kelas</span>
                   </div>
                 </div>
 

@@ -215,10 +215,6 @@ const AboutSection: React.FC = () => (
                             />
                         </div>
                         
-                        {/* Small logo-like element */}
-                        <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-white rounded-full shadow-lg flex items-center justify-center border-4 border-primary-50">
-                            <LogoIcon className="h-10 w-10 text-primary-500" />
-                        </div>
                     </div>
                 </div>
                 <div>

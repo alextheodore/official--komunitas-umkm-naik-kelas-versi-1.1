@@ -175,11 +175,11 @@ const MemberCard: React.FC<MemberCardProps> = ({ user }) => {
                         {/* Header */}
                         <div className="flex justify-between items-start">
                             <div>
-                                <h4 className="text-lg md:text-xl font-black tracking-tight leading-none">Komunitas UMKM Naik Kelas</h4>
-                                <p className="text-[10px] font-bold text-primary-200 mt-1 uppercase tracking-[0.2em]">Kartu Anggota Digital</p>
+                                <h4 className="text-lg md:text-xl font-black tracking-tight leading-none">UMKM Naik Kelas</h4>
+                                <p className="text-[10px] font-bold text-primary-200 mt-1 uppercase tracking-[0.2em]">Official Digital Member</p>
                             </div>
                             <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
-                                <LogoIcon className="h-8 w-8 text-white" />
+                                <LogoIcon className="h-12 w-12 text-white" />
                             </div>
                         </div>
 

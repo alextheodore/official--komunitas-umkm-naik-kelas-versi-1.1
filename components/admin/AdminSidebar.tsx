@@ -29,9 +29,9 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) => {
             ></div>
 
             <aside className={`fixed inset-y-0 left-0 z-30 w-64 flex-col bg-gray-800 text-gray-300 transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                <div className="h-20 flex items-center justify-between px-6 border-b border-gray-700">
-                    <Link to="/" className="flex items-center space-x-2">
-                        <LogoIcon className="h-8 w-auto text-white" />
+                <div className="h-24 flex items-center justify-between px-6 border-b border-gray-700">
+                    <Link to="/" className="flex items-center space-x-3">
+                        <LogoIcon className="h-12 w-auto text-white" />
                         <span className="text-xl font-bold text-white tracking-tight">Admin Panel</span>
                     </Link>
                     <button onClick={onClose} className="md:hidden text-gray-400 hover:text-white focus:outline-none">

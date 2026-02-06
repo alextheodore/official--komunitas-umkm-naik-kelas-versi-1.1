@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { LogoIcon, WhatsAppIcon, YouTubeIcon, InstagramIcon, EmailIcon, LocationIcon, PhoneIcon } from './icons';
@@ -9,8 +10,8 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* About Section */}
           <div className="space-y-4">
-            <Link to="/" className="flex items-center space-x-2">
-              <LogoIcon className="h-8 w-auto text-primary-600" />
+            <Link to="/" className="flex items-center space-x-3">
+              <LogoIcon className="h-14 w-auto text-primary-600" />
               <span className="text-xl font-bold text-gray-800">Komunitas UMKM Naik Kelas</span>
             </Link>
             <p className="text-gray-600 text-sm">

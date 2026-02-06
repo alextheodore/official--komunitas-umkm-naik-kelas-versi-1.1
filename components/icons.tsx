@@ -6,12 +6,71 @@ export interface IconProps extends React.SVGProps<SVGSVGElement> {
 }
 
 export const LogoIcon: React.FC<IconProps> = (props) => (
-  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-    <path d="M3 21H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M5 21V7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M19 21V7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M5 7L12 3L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M9 21V12H15V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  <svg viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+    {/* --- Bagian Ikon Atas --- */}
+    {/* Lingkaran Kuning */}
+    <circle cx="200" cy="140" r="90" stroke="#FDB913" strokeWidth="10" />
+    
+    {/* Figur Manusia (Hitam) */}
+    <circle cx="210" cy="90" r="18" fill="#1D1D1B" />
+    <path 
+      d="M185 130 C195 145 225 155 225 220 L185 220 L130 160 C150 145 175 135 185 130 Z" 
+      fill="#1D1D1B" 
+    />
+    
+    {/* Swoosh Bendera (Merah Putih) */}
+    <path 
+      d="M155 50 C165 110 245 150 245 230 C220 170 165 120 155 50 Z" 
+      fill="#E12127" 
+    />
+    <path 
+      d="M155 50 C160 100 200 140 240 180 C210 140 165 110 155 50 Z" 
+      fill="white" 
+      opacity="0.6"
+    />
+    
+    {/* Bintang-bintang (Kuning) */}
+    <path d="M125 15 L132 28 L147 28 L135 37 L140 52 L125 43 L110 52 L115 37 L103 28 L118 28 Z" fill="#FDB913" />
+    <path d="M165 25 L170 33 L180 33 L172 38 L175 48 L165 42 L155 48 L158 38 L150 33 L160 33 Z" fill="#FDB913" />
+    <path d="M152 50 L155 56 L162 56 L156 60 L158 67 L152 63 L146 67 L148 60 L142 56 L149 56 Z" fill="#FDB913" />
+    <path d="M175 65 L177 70 L182 70 L178 73 L179 78 L175 75 L171 78 L172 73 L168 70 L173 70 Z" fill="#FDB913" />
+    <path d="M138 75 L140 78 L144 78 L141 81 L142 85 L138 83 L134 85 L135 81 L132 78 L136 78 Z" fill="#FDB913" />
+
+    {/* --- Teks "UMKM" --- */}
+    <text 
+      x="200" 
+      y="330" 
+      textAnchor="middle" 
+      fill="#1D1D1B" 
+      style={{ fontSize: '115px', fontWeight: '900', fontFamily: 'Arial, sans-serif' }}
+    >
+      UMKM
+    </text>
+
+    {/* --- Baris Bawah "NAIK KELAS" --- */}
+    {/* Box NAIK (Hitam) */}
+    <rect x="35" y="345" width="165" height="45" fill="#1D1D1B" />
+    <text 
+      x="117" 
+      y="382" 
+      textAnchor="middle" 
+      fill="white" 
+      style={{ fontSize: '38px', fontWeight: 'bold', fontFamily: 'Arial, sans-serif' }}
+    >
+      NAIK
+    </text>
+
+    {/* Box KELAS (Merah) */}
+    <rect x="200" y="345" width="165" height="45" fill="#E12127" />
+    <text 
+      x="282" 
+      y="382" 
+      textAnchor="middle" 
+      fill="#1D1D1B" 
+      style={{ fontSize: '38px', fontWeight: 'bold', fontFamily: 'Arial, sans-serif' }}
+    >
+      KELAS
+    </text>
   </svg>
 );
 
