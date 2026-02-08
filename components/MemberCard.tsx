@@ -32,7 +32,6 @@ const MemberCard: React.FC<MemberCardProps> = ({ user }) => {
             }
             img.onload = () => resolve(img);
             img.onerror = () => {
-                // Jika gagal memuat gambar (mungkin CORS atau Path), reject dengan pesan spesifik
                 reject(new Error(`Failed to load: ${src}`));
             };
             img.src = src;
@@ -104,11 +103,11 @@ const MemberCard: React.FC<MemberCardProps> = ({ user }) => {
                 }
             }
 
-            // Coba muat Logo (Coba berbagai variasi path untuk deployment)
-            const logoPaths = ['logo.jpg', '/logo.jpg', window.location.origin + '/logo.jpg'];
+            // Coba muat Logo dari folder assets sebagai prioritas utama
+            const logoPaths = ['assets/logo.jpg', 'logo.jpg', '/assets/logo.jpg'];
             for (const path of logoPaths) {
                 try {
-                    logoImg = await loadImage(path, false); // Matikan crossOrigin untuk file lokal
+                    logoImg = await loadImage(path, false);
                     if (logoImg) break;
                 } catch (e) {
                     continue;
@@ -143,7 +142,6 @@ const MemberCard: React.FC<MemberCardProps> = ({ user }) => {
                 
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
                 ctx.beginPath();
-                // Check if browser supports roundRect (modern browsers)
                 if (ctx.roundRect) {
                     ctx.roundRect(logoX - 10, logoY - 10, logoSize + 20, logoSize + 20, 15);
                 } else {
@@ -192,7 +190,7 @@ const MemberCard: React.FC<MemberCardProps> = ({ user }) => {
 
         } catch (err) {
             console.error("Gagal generate kartu:", err);
-            alert("Maaf, gagal memproses kartu anggota. Hal ini biasanya karena gambar profil Anda terlindungi (CORS) atau aset logo tidak ditemukan di server produksi. Pastikan file logo.jpg sudah diupload ke folder public.");
+            alert("Maaf, gagal memproses kartu anggota. Pastikan folder 'assets' sudah dibuat dan berisi file 'logo.jpg'.");
         } finally {
             setIsDownloading(false);
         }
@@ -216,7 +214,6 @@ const MemberCard: React.FC<MemberCardProps> = ({ user }) => {
             </div>
 
             <div className="flex flex-col items-center">
-                {/* Visual Preview Card (CSS Only) */}
                 <div 
                     ref={cardRef}
                     className="w-full max-w-lg bg-gradient-to-br from-primary-600 to-primary-800 text-white rounded-[2rem] shadow-2xl p-8 md:p-10 relative overflow-hidden aspect-[1.6/1] border border-white/10"
@@ -225,7 +222,6 @@ const MemberCard: React.FC<MemberCardProps> = ({ user }) => {
                      <div className="absolute -bottom-16 -left-12 w-40 h-40 bg-white/5 rounded-full blur-xl"></div>
                     
                     <div className="relative z-10 h-full flex flex-col justify-between">
-                        {/* Header */}
                         <div className="flex justify-between items-start">
                             <div>
                                 <h4 className="text-lg md:text-xl font-black tracking-tight leading-none">UMKM Naik Kelas</h4>
@@ -236,7 +232,6 @@ const MemberCard: React.FC<MemberCardProps> = ({ user }) => {
                             </div>
                         </div>
 
-                        {/* Member Info */}
                         <div className="flex items-center space-x-6">
                             <div className="relative">
                                 <img 
@@ -257,7 +252,6 @@ const MemberCard: React.FC<MemberCardProps> = ({ user }) => {
                             </div>
                         </div>
 
-                        {/* Member Number and Date */}
                         <div className="grid grid-cols-2 gap-4 border-t border-white/10 pt-4">
                             <div>
                                 <p className="text-[9px] font-black text-primary-200 uppercase tracking-widest">Nomor Anggota</p>
