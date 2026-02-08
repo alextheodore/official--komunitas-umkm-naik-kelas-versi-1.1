@@ -7,7 +7,7 @@ export interface IconProps extends React.ImgHTMLAttributes<HTMLImageElement> {
 
 export const LogoIcon: React.FC<IconProps> = ({ className, filled, ...props }) => (
   <img 
-    src="/logo.jpg" 
+    src="logo.jpg" 
     alt="Logo UMKM Naik Kelas" 
     className={className}
     {...props}
