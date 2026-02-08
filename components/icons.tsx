@@ -10,6 +10,13 @@ export const LogoIcon: React.FC<IconProps> = ({ className, filled, ...props }) =
     src="logo.jpg" 
     alt="Logo UMKM Naik Kelas" 
     className={className}
+    onError={(e) => {
+        // Fallback jika jpg gagal, coba cari di root absolute
+        const target = e.target as HTMLImageElement;
+        if (!target.src.includes(window.location.origin)) {
+            target.src = window.location.origin + "/logo.jpg";
+        }
+    }}
     {...props}
   />
 );

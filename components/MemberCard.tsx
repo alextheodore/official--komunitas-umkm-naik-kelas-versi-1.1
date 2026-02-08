@@ -22,14 +22,34 @@ const MemberCard: React.FC<MemberCardProps> = ({ user }) => {
     });
     
     /**
+     * Memuat gambar secara asinkron dengan penanganan CORS dan Fallback
+     */
+    const loadImage = (src: string, useCrossOrigin: boolean = true): Promise<HTMLImageElement> => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            if (useCrossOrigin) {
+                img.crossOrigin = 'anonymous'; 
+            }
+            img.onload = () => resolve(img);
+            img.onerror = () => {
+                // Jika gagal memuat gambar (mungkin CORS atau Path), reject dengan pesan spesifik
+                reject(new Error(`Failed to load: ${src}`));
+            };
+            img.src = src;
+        });
+    };
+
+    /**
      * Menggambar kartu anggota ke canvas dan mengunduhnya sebagai PNG
      */
     const handleDownload = async () => {
+        if (isDownloading) return;
         setIsDownloading(true);
+        
         try {
             const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            if (!ctx) throw new Error("Gagal menginisialisasi Canvas Context");
 
             // Set dimensi HD untuk kartu (1000px x 630px)
             canvas.width = 1000;
@@ -42,104 +62,137 @@ const MemberCard: React.FC<MemberCardProps> = ({ user }) => {
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 2. Gambar Elemen Dekorasi (Lingkaran)
+            // 2. Gambar Elemen Dekorasi
             ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
             ctx.beginPath();
-            ctx.arc(canvas.width, 0, 300, 0, Math.PI * 2);
+            ctx.arc(canvas.width, 0, 350, 0, Math.PI * 2);
             ctx.fill();
             ctx.beginPath();
-            ctx.arc(0, canvas.height, 250, 0, Math.PI * 2);
+            ctx.arc(0, canvas.height, 300, 0, Math.PI * 2);
             ctx.fill();
 
             // 3. Header Teks
             ctx.fillStyle = '#FFFFFF';
-            ctx.font = 'bold 36px sans-serif';
-            ctx.fillText('Komunitas UMKM Naik Kelas', 60, 80);
+            ctx.font = 'bold 38px sans-serif';
+            ctx.fillText('Komunitas UMKM Naik Kelas', 60, 85);
             
             ctx.fillStyle = '#CCE5FF'; // Primary-100
-            ctx.font = 'bold 20px sans-serif';
-            ctx.fillText('KARTU ANGGOTA DIGITAL', 60, 115);
+            ctx.font = '900 22px sans-serif';
+            ctx.fillText('OFFICIAL DIGITAL MEMBER', 60, 125);
 
             // 4. Garis Pemisah
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.moveTo(60, 150);
-            ctx.lineTo(canvas.width - 60, 150);
+            ctx.moveTo(60, 165);
+            ctx.lineTo(canvas.width - 60, 165);
             ctx.stroke();
 
-            // 5. Muat dan Gambar Foto Profil (Lingkaran)
-            const img = new Image();
-            img.crossOrigin = 'anonymous'; // Krusial untuk menghindari error CORS
-            
-            // Tunggu gambar profil termuat
-            await new Promise((resolve, reject) => {
-                img.onload = resolve;
-                img.onerror = reject;
-                img.src = user.profilePicture;
-            });
+            // 5. Muat Aset Gambar secara SERIAL untuk kontrol error yang lebih baik
+            let profileImg: HTMLImageElement | null = null;
+            let logoImg: HTMLImageElement | null = null;
 
-            // Kliping Lingkaran untuk Foto
-            ctx.save();
-            ctx.beginPath();
-            const photoX = 160;
-            const photoY = 320;
-            const photoR = 100;
-            ctx.arc(photoX, photoY, photoR, 0, Math.PI * 2);
-            ctx.clip();
-            ctx.drawImage(img, photoX - photoR, photoY - photoR, photoR * 2, photoR * 2);
-            ctx.restore();
+            // Coba muat Profil
+            try {
+                profileImg = await loadImage(user.profilePicture);
+            } catch (e) {
+                console.warn("CORS/Path issue with profile picture, using fallback avatar.");
+                try {
+                    profileImg = await loadImage(`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&size=512`);
+                } catch (e2) {
+                    console.error("Avatar fallback failed");
+                }
+            }
 
-            // Border putih di sekeliling foto
-            ctx.strokeStyle = '#FFFFFF';
-            ctx.lineWidth = 8;
-            ctx.beginPath();
-            ctx.arc(photoX, photoY, photoR, 0, Math.PI * 2);
-            ctx.stroke();
+            // Coba muat Logo (Coba berbagai variasi path untuk deployment)
+            const logoPaths = ['logo.jpg', '/logo.jpg', window.location.origin + '/logo.jpg'];
+            for (const path of logoPaths) {
+                try {
+                    logoImg = await loadImage(path, false); // Matikan crossOrigin untuk file lokal
+                    if (logoImg) break;
+                } catch (e) {
+                    continue;
+                }
+            }
 
-            // 6. Nama Anggota & Bisnis
+            // Gambar Foto Profil (Lingkaran)
+            if (profileImg) {
+                ctx.save();
+                const photoX = 180;
+                const photoY = 340;
+                const photoR = 110;
+                ctx.beginPath();
+                ctx.arc(photoX, photoY, photoR, 0, Math.PI * 2);
+                ctx.clip();
+                ctx.drawImage(profileImg, photoX - photoR, photoY - photoR, photoR * 2, photoR * 2);
+                ctx.restore();
+
+                // Border putih
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = 8;
+                ctx.beginPath();
+                ctx.arc(photoX, photoY, photoR, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // 6. Gambar Logo
+            if (logoImg) {
+                const logoSize = 120;
+                const logoX = canvas.width - logoSize - 60;
+                const logoY = 40;
+                
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.beginPath();
+                // Check if browser supports roundRect (modern browsers)
+                if (ctx.roundRect) {
+                    ctx.roundRect(logoX - 10, logoY - 10, logoSize + 20, logoSize + 20, 15);
+                } else {
+                    ctx.rect(logoX - 10, logoY - 10, logoSize + 20, logoSize + 20);
+                }
+                ctx.fill();
+                
+                ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
+            }
+
+            // 7. Teks Nama & Bisnis
             ctx.fillStyle = '#FFFFFF';
-            ctx.font = 'bold 48px sans-serif';
-            ctx.fillText(user.name.toUpperCase(), 300, 310);
+            ctx.font = '900 52px sans-serif';
+            ctx.fillText(user.name.toUpperCase(), 330, 330);
             
-            ctx.fillStyle = '#FFC107'; // Accent Color
-            ctx.font = 'bold 28px sans-serif';
-            ctx.fillText(user.businessName, 300, 360);
+            ctx.fillStyle = '#FFC107'; 
+            ctx.font = 'bold 32px sans-serif';
+            ctx.fillText(user.businessName, 330, 385);
 
-            // 7. Footer Info (Nomor & Tanggal)
+            // 8. Footer Info
             ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-            ctx.font = 'bold 16px sans-serif';
-            ctx.fillText('NOMOR ANGGOTA', 60, 520);
-            ctx.fillText('ANGGOTA SEJAK', canvas.width / 2, 520);
+            ctx.font = 'bold 18px sans-serif';
+            ctx.fillText('NOMOR ANGGOTA', 60, 530);
+            ctx.fillText('BERGABUNG SEJAK', canvas.width / 2, 530);
 
             ctx.fillStyle = '#FFFFFF';
-            ctx.font = 'bold 28px monospace';
-            ctx.fillText(memberNumber, 60, 565);
+            ctx.font = 'bold 30px monospace';
+            ctx.fillText(memberNumber, 60, 575);
             
-            ctx.font = 'bold 28px sans-serif';
-            ctx.fillText(memberSince, canvas.width / 2, 565);
+            ctx.font = 'bold 30px sans-serif';
+            ctx.fillText(memberSince, canvas.width / 2, 575);
 
-            // 8. Tanda Tangan Digital / Watermark logo kecil di pojok
+            // 9. Watermark
             ctx.globalAlpha = 0.3;
-            ctx.font = 'italic 14px sans-serif';
-            ctx.fillText('umkmnaikkelas.id', canvas.width - 180, canvas.height - 40);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'italic 16px sans-serif';
+            ctx.fillText('umkmnaikkelas.id', canvas.width - 200, canvas.height - 40);
             ctx.globalAlpha = 1.0;
 
-            // 9. Konversi ke Blob dan Download
-            canvas.toBlob((blob) => {
-                if (blob) {
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.download = `Kartu_Anggota_${user.name.replace(/\s+/g, '_')}.png`;
-                    link.href = url;
-                    link.click();
-                    URL.revokeObjectURL(url);
-                }
-            }, 'image/png');
+            // 10. Trigger Download
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = `Kartu_Anggota_${user.name.replace(/\s+/g, '_')}.png`;
+            link.href = dataUrl;
+            link.click();
 
         } catch (err) {
             console.error("Gagal generate kartu:", err);
-            alert("Maaf, gagal mengunduh kartu. Pastikan koneksi internet Anda stabil.");
+            alert("Maaf, gagal memproses kartu anggota. Hal ini biasanya karena gambar profil Anda terlindungi (CORS) atau aset logo tidak ditemukan di server produksi. Pastikan file logo.jpg sudah diupload ke folder public.");
         } finally {
             setIsDownloading(false);
         }
@@ -179,7 +232,7 @@ const MemberCard: React.FC<MemberCardProps> = ({ user }) => {
                                 <p className="text-[10px] font-bold text-primary-200 mt-1 uppercase tracking-[0.2em]">Official Digital Member</p>
                             </div>
                             <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
-                                <LogoIcon className="h-12 w-12 text-white" />
+                                <LogoIcon className="h-14 w-14" />
                             </div>
                         </div>
 
@@ -189,6 +242,9 @@ const MemberCard: React.FC<MemberCardProps> = ({ user }) => {
                                 <img 
                                     src={user.profilePicture} 
                                     alt={user.name}
+                                    onError={(e) => {
+                                        (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`;
+                                    }}
                                     className="h-20 w-20 md:h-24 md:w-24 rounded-full object-cover border-4 border-white/30 shadow-lg"
                                 />
                                 <div className="absolute -bottom-1 -right-1 bg-accent text-gray-900 rounded-full p-1 border-2 border-primary-700 shadow-md">
