@@ -8,16 +8,7 @@ import LogoutConfirmationModal from './LogoutConfirmationModal';
 import type { Notification } from '../types';
 import Breadcrumbs from './Breadcrumbs';
 import ListProductModal from './ListProductModal';
-
-// Mock Data for Notifications
-// FIX: Changed IDs from number to string to match Notification interface
-const mockNotifications: Notification[] = [
-    { id: '5', type: 'wishlist_update', title: 'Stok Menipis!', description: 'Produk "Kopi Arabika Gayo" di wishlist Anda tersisa 2 item.', timestamp: 'Baru saja', read: false },
-    { id: '6', type: 'wishlist_update', title: 'Produk Populer', description: '3 orang menambahkan "Tas Kulit Selempang" ke wishlist hari ini.', timestamp: '10 menit lalu', read: false },
-    { id: '1', type: 'comment', title: 'Budi Santoso membalas diskusi Anda', description: 'Di "Tips mengelola keuangan..."', timestamp: '2 jam lalu', read: false },
-    { id: '2', type: 'event', title: 'Event "Workshop Fotografi Produk" akan dimulai besok', description: 'Jangan lupa persiapkan kamera Anda!', timestamp: '1 hari lalu', read: false },
-    { id: '3', type: 'new_member', title: 'Rina Susanti bergabung', description: 'Sambut anggota baru dari industri Kerajinan Kulit.', timestamp: '3 hari lalu', read: true },
-];
+import { supabase } from '../lib/supabase';
 
 const NotificationItemIcon: React.FC<{ type: Notification['type'] }> = ({ type }) => {
     switch (type) {
@@ -45,7 +36,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenChat }) => {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isListProductModalOpen, setIsListProductModalOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   
   const menuRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -54,6 +45,83 @@ const Header: React.FC<HeaderProps> = ({ onOpenChat }) => {
   const { currentUser, logout, wishlist } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // REAL-TIME NOTIFICATIONS FETCHING
+  useEffect(() => {
+    if (!currentUser) {
+        setNotifications([]);
+        return;
+    }
+
+    const fetchNotifications = async () => {
+        const { data, error } = await supabase
+            .from('notifications')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        if (!error && data) {
+            setNotifications(data.map(n => ({
+                id: n.id,
+                type: n.type as Notification['type'],
+                title: n.title,
+                description: n.description,
+                timestamp: formatTimeAgo(n.created_at),
+                read: n.read
+            })));
+        }
+    };
+
+    fetchNotifications();
+
+    // Listen for real-time inserts
+    const channel = supabase
+        .channel('realtime_notifications')
+        .on('postgres_changes', { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'notifications', 
+            filter: `user_id=eq.${currentUser.id}` 
+        }, (payload) => {
+            const newNotif = payload.new as any;
+            setNotifications(prev => [{
+                id: newNotif.id,
+                type: newNotif.type as Notification['type'],
+                title: newNotif.title,
+                description: newNotif.description,
+                timestamp: 'Baru saja',
+                read: false
+            }, ...prev]);
+        })
+        .subscribe();
+
+    return () => {
+        supabase.removeChannel(channel);
+    };
+  }, [currentUser]);
+
+  const formatTimeAgo = (dateStr: string) => {
+    const seconds = Math.floor((new Date().getTime() - new Date(dateStr).getTime()) / 1000);
+    if (seconds < 60) return 'Baru saja';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} menit lalu`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} jam lalu`;
+    return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  };
+
+  const markAllAsRead = async () => {
+      if (!currentUser) return;
+      const { error } = await supabase
+          .from('notifications')
+          .update({ read: true })
+          .eq('user_id', currentUser.id);
+
+      if (!error) {
+          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      }
+  };
 
   const handleLogoutClick = () => {
     setIsLogoutModalOpen(true);
@@ -75,13 +143,8 @@ const Header: React.FC<HeaderProps> = ({ onOpenChat }) => {
   };
 
   const handleAddProduct = (product: any) => {
-      // In a real app, this would update the context or make an API call
-      // Here we just simulate success
       setIsListProductModalOpen(false);
       navigate('/marketplace');
-      setTimeout(() => {
-          alert("Produk berhasil ditambahkan! (Mode Demo)");
-      }, 500);
   };
 
   useEffect(() => {
@@ -112,13 +175,6 @@ const Header: React.FC<HeaderProps> = ({ onOpenChat }) => {
   ];
   
   const unreadCount = notifications.filter(n => !n.read).length;
-  
-  const markAllAsRead = () => {
-      setNotifications(notifications.map(n => ({...n, read: true})));
-  };
-
-  // Only show the mobile quick link on the homepage or if not deep in navigation to avoid clutter
-  const showMobileQuickLink = location.pathname === '/';
 
   return (
     <>
@@ -130,7 +186,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenChat }) => {
                 <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={() => navigate('/')}>
                   <div className="flex items-center space-x-3">
                     <LogoIcon className="h-14 w-auto text-primary-600" />
-                    <span className="text-xl font-bold text-gray-800 hidden sm:inline tracking-tight hover:text-primary-600 transition-colors">UMKM Naik Kelas</span>
+                    <span className="text-xl font-bold text-gray-800 hidden sm:inline tracking-tight hover:text-primary-600 transition-colors">Komunitas UMKM Naik Kelas</span>
                   </div>
                 </div>
 
@@ -166,7 +222,6 @@ const Header: React.FC<HeaderProps> = ({ onOpenChat }) => {
                     <SearchIcon className="h-5 w-5 lg:h-6 lg:w-6" />
                   </button>
 
-                  {/* Sell Button (Visible on Mobile & Desktop - Significantly Enhanced) */}
                   <button
                     onClick={handleSellClick}
                     className="flex items-center justify-center bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white p-2 lg:px-6 lg:py-2.5 rounded-full shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/40 transition-all duration-300 transform hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-primary-200 group border border-primary-400/20"
@@ -178,7 +233,6 @@ const Header: React.FC<HeaderProps> = ({ onOpenChat }) => {
                   
                   {currentUser ? (
                     <>
-                      {/* Wishlist Button (Desktop) */}
                       <Link to="/marketplace?filter=wishlist" className="relative p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors hidden md:block" aria-label="Wishlist">
                         <HeartIcon className="h-6 w-6" />
                         {wishlist.length > 0 && (
@@ -188,10 +242,10 @@ const Header: React.FC<HeaderProps> = ({ onOpenChat }) => {
                         )}
                       </Link>
 
-                      {/* Notifications Button & Dropdown (Desktop) */}
+                      {/* REAL NOTIFICATIONS UI */}
                       <div className="relative hidden md:block" ref={notificationsRef}>
                          <button onClick={() => setIsNotificationsOpen(!isNotificationsOpen)} className="relative p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500" aria-label="Notifikasi">
-                            <BellIcon className="h-6 w-6" />
+                            <BellIcon className={`h-6 w-6 ${unreadCount > 0 ? 'animate-bounce-slow text-primary-500' : ''}`} />
                             {unreadCount > 0 && (
                                 <span className="absolute top-0.5 right-0.5 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"></span>
                             )}
@@ -199,7 +253,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenChat }) => {
                         {isNotificationsOpen && (
                             <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 flex flex-col overflow-hidden z-50 animate-fade-in-up origin-top-right ring-1 ring-black/5">
                                 <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-gray-50/80 backdrop-blur-sm">
-                                    <h3 className="text-sm font-bold text-gray-800">Notifikasi</h3>
+                                    <h3 className="text-sm font-bold text-gray-800">Notifikasi ({unreadCount})</h3>
                                     {unreadCount > 0 && (
                                          <button onClick={markAllAsRead} className="text-xs font-semibold text-primary-600 hover:underline">Tandai dibaca</button>
                                     )}
@@ -212,24 +266,23 @@ const Header: React.FC<HeaderProps> = ({ onOpenChat }) => {
                                                     <NotificationItemIcon type={notification.type} />
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-medium text-gray-800 leading-snug">{notification.title}</p>
-                                                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">{notification.description}</p>
-                                                    <p className="text-[10px] text-gray-400 mt-1.5">{notification.timestamp}</p>
+                                                    <p className="text-sm font-bold text-gray-800 leading-snug">{notification.title}</p>
+                                                    <p className="text-xs text-gray-500 mt-1 line-clamp-2 font-medium">{notification.description}</p>
+                                                    <p className="text-[10px] text-gray-400 mt-1.5 font-bold uppercase">{notification.timestamp}</p>
                                                 </div>
                                             </div>
                                         </li>
                                     )) : (
-                                        <li className="p-8 text-center text-sm text-gray-500">Belum ada notifikasi.</li>
+                                        <li className="p-8 text-center text-sm text-gray-500">Belum ada notifikasi baru.</li>
                                     )}
                                 </ul>
                                 <div className="p-3 border-t border-gray-100 bg-gray-50 text-center">
-                                    <Link to="/profile" className="text-xs font-bold text-primary-600 hover:text-primary-700 uppercase tracking-wide">Lihat Semua</Link>
+                                    <Link to="/profile" className="text-xs font-bold text-primary-600 hover:text-primary-700 uppercase tracking-wide">Lihat Profil</Link>
                                 </div>
                             </div>
                         )}
                       </div>
 
-                      {/* User Profile Dropdown (Desktop) */}
                       <div className="relative hidden md:block" ref={profileRef}>
                         <button
                           onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -256,32 +309,18 @@ const Header: React.FC<HeaderProps> = ({ onOpenChat }) => {
                                 </div>
                             </div>
                             <div className="py-1">
-                                <Link
-                                to="/profile"
-                                onClick={() => setIsProfileOpen(false)}
-                                className="flex items-center px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary-600 transition-colors"
-                                >
-                                <UserCircleIcon className="h-4 w-4 mr-3" />
-                                Profil Saya
+                                <Link to="/profile" onClick={() => setIsProfileOpen(false)} className="flex items-center px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary-600 transition-colors">
+                                    <UserCircleIcon className="h-4 w-4 mr-3" /> Profil Saya
                                 </Link>
                                 {currentUser.role === 'admin' && (
-                                    <Link
-                                    to="/admin"
-                                    onClick={() => setIsProfileOpen(false)}
-                                    className="flex items-center px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary-600 transition-colors"
-                                    >
-                                    <CogIcon className="h-4 w-4 mr-3" />
-                                    Admin Panel
+                                    <Link to="/admin" onClick={() => setIsProfileOpen(false)} className="flex items-center px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary-600 transition-colors">
+                                        <CogIcon className="h-4 w-4 mr-3" /> Admin Panel
                                     </Link>
                                 )}
                             </div>
                             <div className="py-1 border-t border-gray-100">
-                                <button
-                                onClick={handleLogoutClick}
-                                className="w-full text-left flex items-center px-5 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                                >
-                                <LogoutIcon className="h-4 w-4 mr-3" />
-                                Keluar
+                                <button onClick={handleLogoutClick} className="w-full text-left flex items-center px-5 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                    <LogoutIcon className="h-4 w-4 mr-3" /> Keluar
                                 </button>
                             </div>
                           </div>
@@ -290,44 +329,21 @@ const Header: React.FC<HeaderProps> = ({ onOpenChat }) => {
                     </>
                   ) : (
                     <div className="hidden md:flex items-center space-x-3">
-                      <Link
-                        to="/login"
-                        className="text-sm font-semibold text-gray-600 hover:text-primary-600 transition-colors px-4 py-2.5 rounded-lg hover:bg-gray-50"
-                      >
-                        Masuk
-                      </Link>
-                      <Link
-                        to="/register"
-                        className="text-sm font-bold text-white bg-gray-900 hover:bg-black px-5 py-2.5 rounded-full shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5"
-                      >
-                        Daftar
-                      </Link>
+                      <Link to="/login" className="text-sm font-semibold text-gray-600 hover:text-primary-600 transition-colors px-4 py-2.5 rounded-lg hover:bg-gray-50">Masuk</Link>
+                      <Link to="/register" className="text-sm font-bold text-white bg-gray-900 hover:bg-black px-5 py-2.5 rounded-full shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5">Daftar</Link>
                     </div>
                   )}
 
-                  {/* Mobile Menu & Chat Buttons */}
                   <div className="md:hidden flex items-center ml-2 space-x-1">
-                    <button
-                      onClick={() => setIsMenuOpen(!isMenuOpen)}
-                      className="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
-                      aria-expanded={isMenuOpen}
-                    >
-                      <span className="sr-only">Buka menu utama</span>
-                      {isMenuOpen ? (
-                        <CloseIcon className="block h-6 w-6" />
-                      ) : (
+                    <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500">
+                      {isMenuOpen ? <CloseIcon className="block h-6 w-6" /> : (
                         <div className="relative">
                             <MenuIcon className="block h-6 w-6" />
                             {unreadCount > 0 && <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"></span>}
                         </div>
                       )}
                     </button>
-                    
-                    <button
-                        onClick={onOpenChat}
-                        className="p-2 rounded-md text-gray-500 hover:text-primary-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
-                        aria-label="Buka Chat Assistant"
-                    >
+                    <button onClick={onOpenChat} className="p-2 rounded-md text-gray-500 hover:text-primary-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500">
                         <ChatBotIcon className="h-6 w-6" />
                     </button>
                   </div>
@@ -336,75 +352,45 @@ const Header: React.FC<HeaderProps> = ({ onOpenChat }) => {
             </div>
         </div>
         
-        {/* Mobile Marketplace Quick Link */}
-        {showMobileQuickLink && (
+        {location.pathname === '/' && (
             <div className="md:hidden bg-gradient-to-r from-primary-50 to-white border-b border-primary-100 py-2.5 px-4 shadow-sm">
                  <Link to="/marketplace" className="flex items-center justify-center text-sm font-bold text-primary-700 hover:text-primary-800">
-                    <MarketplaceIcon className="w-4 h-4 mr-2" />
-                    Belanja di Marketplace
+                    <MarketplaceIcon className="w-4 h-4 mr-2" /> Belanja di Marketplace
                  </Link>
             </div>
         )}
 
-        {/* Breadcrumbs - Integrated into Header for all screens */}
         <Breadcrumbs />
 
-        {/* Mobile Navigation Menu */}
         {isMenuOpen && (
           <div className="md:hidden absolute top-[calc(100%)] left-0 w-full bg-white border-b border-gray-200 shadow-2xl z-40 max-h-[calc(100vh-5rem)] overflow-y-auto animate-fade-in-up origin-top">
             <div className="px-4 pt-4 pb-8 space-y-2">
               {navLinks.map((link) => (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  onClick={() => setIsMenuOpen(false)}
-                  className={({ isActive }) =>
-                    `block px-4 py-3 rounded-lg text-base font-semibold transition-all ${
-                      isActive ? 'bg-primary-50 text-primary-600 translate-x-1' : 'text-gray-700 hover:bg-gray-50 hover:text-primary-600 hover:translate-x-1'
-                    }`
-                  }
-                >
+                <NavLink key={link.to} to={link.to} onClick={() => setIsMenuOpen(false)} className={({ isActive }) => `block px-4 py-3 rounded-lg text-base font-semibold transition-all ${isActive ? 'bg-primary-50 text-primary-600 translate-x-1' : 'text-gray-700 hover:bg-gray-50 hover:text-primary-600 hover:translate-x-1'}`}>
                   {link.text}
                 </NavLink>
               ))}
 
-              {/* Mobile Notifications Link */}
-              <Link
-                to="/profile"
-                onClick={() => setIsMenuOpen(false)}
-                className="block px-4 py-3 rounded-lg text-base font-semibold text-gray-700 hover:bg-gray-50 hover:text-primary-600 hover:translate-x-1 transition-all"
-              >
+              <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="block px-4 py-3 rounded-lg text-base font-semibold text-gray-700 hover:bg-gray-50 hover:text-primary-600 hover:translate-x-1 transition-all">
                  <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                        <BellIcon className="h-5 w-5 mr-3" />
-                        Notifikasi
+                        <BellIcon className="h-5 w-5 mr-3" /> Notifikasi
                     </div>
-                    {unreadCount > 0 && (
-                        <span className="bg-red-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm">{unreadCount}</span>
-                    )}
+                    {unreadCount > 0 && <span className="bg-red-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm">{unreadCount}</span>}
                  </div>
               </Link>
 
-              {/* Mobile Wishlist Link */}
               {currentUser && (
-                  <Link
-                    to="/marketplace?filter=wishlist"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="block px-4 py-3 rounded-lg text-base font-semibold text-gray-700 hover:bg-gray-50 hover:text-primary-600 hover:translate-x-1 transition-all"
-                  >
+                  <Link to="/marketplace?filter=wishlist" onClick={() => setIsMenuOpen(false)} className="block px-4 py-3 rounded-lg text-base font-semibold text-gray-700 hover:bg-gray-50 hover:text-primary-600 hover:translate-x-1 transition-all">
                      <div className="flex items-center justify-between">
                         <div className="flex items-center">
-                            <HeartIcon className="h-5 w-5 mr-3" />
-                            Wishlist
+                            <HeartIcon className="h-5 w-5 mr-3" /> Wishlist
                         </div>
-                        {wishlist.length > 0 && (
-                            <span className="bg-primary-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm">{wishlist.length}</span>
-                        )}
+                        {wishlist.length > 0 && <span className="bg-primary-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm">{wishlist.length}</span>}
                      </div>
                   </Link>
               )}
 
-              {/* Mobile User Profile / Login */}
               <div className="border-t border-gray-100 pt-6 mt-6">
                 {currentUser ? (
                   <>
@@ -416,69 +402,32 @@ const Header: React.FC<HeaderProps> = ({ onOpenChat }) => {
                       </div>
                     </div>
                     <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="block px-4 py-3 rounded-lg text-base font-semibold text-gray-700 hover:bg-gray-50 hover:text-primary-600 hover:translate-x-1 transition-all">
-                      <div className="flex items-center">
-                          <UserCircleIcon className="h-5 w-5 mr-3" />
-                          Profil Saya
-                      </div>
+                      <div className="flex items-center"><UserCircleIcon className="h-5 w-5 mr-3" /> Profil Saya</div>
                     </Link>
                     {currentUser.role === 'admin' && (
                         <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="block px-4 py-3 rounded-lg text-base font-semibold text-gray-700 hover:bg-gray-50 hover:text-primary-600 hover:translate-x-1 transition-all">
-                        <div className="flex items-center">
-                            <CogIcon className="h-5 w-5 mr-3" />
-                            Admin Panel
-                        </div>
+                        <div className="flex items-center"><CogIcon className="h-5 w-5 mr-3" /> Admin Panel</div>
                         </Link>
                     )}
                     <button onClick={handleLogoutClick} className="w-full text-left block px-4 py-3 rounded-lg text-base font-semibold text-red-600 hover:bg-red-50 hover:translate-x-1 transition-all">
-                      <div className="flex items-center">
-                          <LogoutIcon className="h-5 w-5 mr-3" />
-                          Keluar
-                      </div>
+                      <div className="flex items-center"><LogoutIcon className="h-5 w-5 mr-3" /> Keluar</div>
                     </button>
                   </>
                 ) : (
                   <div className="grid grid-cols-2 gap-4 px-4">
-                    <Link to="/login" onClick={() => setIsMenuOpen(false)} className="flex justify-center items-center px-4 py-3 border border-gray-300 rounded-lg text-sm font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-                      Masuk
-                    </Link>
-                    <Link to="/register" onClick={() => setIsMenuOpen(false)} className="flex justify-center items-center px-4 py-3 border border-transparent rounded-lg text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 shadow-md transition-all">
-                      Daftar
-                    </Link>
+                    <Link to="/login" onClick={() => setIsMenuOpen(false)} className="flex justify-center items-center px-4 py-3 border border-gray-300 rounded-lg text-sm font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors">Masuk</Link>
+                    <Link to="/register" onClick={() => setIsMenuOpen(false)} className="flex justify-center items-center px-4 py-3 border border-transparent rounded-lg text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 shadow-md transition-all">Daftar</Link>
                   </div>
                 )}
               </div>
-
-              {/* Contact Info Mobile */}
-              <div className="border-t border-gray-100 pt-6 mt-4 px-4 bg-gray-50 -mx-4 px-8 pb-8">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Hubungi Kami</p>
-                  <div className="space-y-4">
-                      <a href="mailto:support@umkmnaikkelas.id" className="flex items-center text-sm font-medium text-gray-600 hover:text-primary-600 transition-colors">
-                          <EmailIcon className="h-5 w-5 mr-3 text-primary-500" />
-                          support@umkmnaikkelas.id
-                      </a>
-                      <a href="tel:+62211234567" className="flex items-center text-sm font-medium text-gray-600 hover:text-primary-600 transition-colors">
-                          <PhoneIcon className="h-5 w-5 mr-3 text-primary-500" />
-                          +62 21 1234 567
-                      </a>
-                  </div>
-              </div>
-
             </div>
           </div>
         )}
       </header>
       
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-      <LogoutConfirmationModal 
-        isOpen={isLogoutModalOpen} 
-        onClose={() => setIsLogoutModalOpen(false)} 
-        onConfirm={confirmLogout}
-      />
-      <ListProductModal
-        isOpen={isListProductModalOpen}
-        onClose={() => setIsListProductModalOpen(false)}
-        onAddProduct={handleAddProduct}
-      />
+      <LogoutConfirmationModal isOpen={isLogoutModalOpen} onClose={() => setIsLogoutModalOpen(false)} onConfirm={confirmLogout} />
+      <ListProductModal isOpen={isListProductModalOpen} onClose={() => setIsListProductModalOpen(false)} onAddProduct={handleAddProduct} />
     </>
   );
 };

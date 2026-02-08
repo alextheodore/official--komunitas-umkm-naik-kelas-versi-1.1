@@ -38,27 +38,31 @@ const MarketplacePage: React.FC = () => {
             
             if (error) throw error;
             
-            const mapped: Product[] = data.map(p => ({
-                id: p.id,
-                name: p.name,
-                seller_id: p.seller_id,
-                price: p.price,
-                stock: p.stock,
-                category: p.category,
-                description: p.description,
-                images: p.images || [],
-                rating: p.rating || 0,
-                reviewsCount: p.reviews_count || 0,
-                dateListed: p.created_at,
-                seller: {
-                    id: p.profiles.id,
-                    name: p.profiles.full_name,
-                    businessName: p.profiles.business_name,
-                    profilePicture: p.profiles.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.profiles.full_name)}`,
-                    phone: p.profiles.phone_number || '',
-                    email: p.profiles.email || ''
-                }
-            }));
+            // Filter: Pastikan profil penjual ada (bukan null akibat user dihapus)
+            // Ini akan menyembunyikan produk "yatim piatu" dari UI marketplace
+            const mapped: Product[] = data
+                .filter(p => p.profiles !== null)
+                .map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    seller_id: p.seller_id,
+                    price: p.price,
+                    stock: p.stock,
+                    category: p.category,
+                    description: p.description,
+                    images: p.images || [],
+                    rating: p.rating || 0,
+                    reviewsCount: p.reviews_count || 0,
+                    dateListed: p.created_at,
+                    seller: {
+                        id: p.profiles.id,
+                        name: p.profiles.full_name,
+                        businessName: p.profiles.business_name,
+                        profilePicture: p.profiles.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.profiles.full_name)}`,
+                        phone: p.profiles.phone_number || '',
+                        email: p.profiles.email || ''
+                    }
+                }));
 
             // Client side search filter
             const filtered = mapped.filter(p => 

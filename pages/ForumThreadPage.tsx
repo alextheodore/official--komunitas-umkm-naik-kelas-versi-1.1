@@ -7,8 +7,7 @@ import VoteControl from '../components/VoteControl';
 import FollowButton from '../components/FollowButton';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { SpinnerIcon, SparklesIcon, ChatBotIcon } from '../components/icons';
-import { GoogleGenAI } from '@google/genai';
+import { SpinnerIcon } from '../components/icons';
 
 const PostCard: React.FC<{ post: ForumPost, isOP?: boolean }> = ({ post, isOP = false }) => {
     const { currentUser } = useAuth();
@@ -73,8 +72,6 @@ const ForumThreadPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [reply, setReply] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [aiInsight, setAiInsight] = useState<string | null>(null);
-    const [isGeneratingAi, setIsGeneratingAi] = useState(false);
     const { currentUser } = useAuth();
 
     const fetchThreadData = async () => {
@@ -138,43 +135,17 @@ const ForumThreadPage: React.FC = () => {
         }
     };
 
-    const handleGenerateAiInsight = async () => {
-        if (!thread || isGeneratingAi) return;
-        setIsGeneratingAi(true);
-        try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-            const allContent = thread.posts.map(p => `${p.author?.name}: ${p.content}`).join('\n\n');
-            const prompt = `Analisis diskusi forum UMKM berikut dengan judul "${thread.title}". 
-            Isi diskusi:\n${allContent}\n\n
-            Berikan: 
-            1. Ringkasan singkat diskusi.
-            2. Solusi atau jawaban terbaik berdasarkan poin-poin yang dibahas.
-            3. 3 Tips tambahan dari perspektif ahli bisnis untuk membantu pengusaha ini.
-            Gunakan format Markdown yang rapi dengan bullet points. Berikan dalam Bahasa Indonesia yang profesional.`;
-
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: prompt
-            });
-
-            setAiInsight(response.text || "Gagal mendapatkan insight.");
-        } catch (err) {
-            alert("Maaf, AI sedang sibuk. Silakan coba lagi nanti.");
-        } finally {
-            setIsGeneratingAi(false);
-        }
-    };
-
     useEffect(() => {
         fetchThreadData();
     }, [threadId]);
 
     const handleReplySubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!currentUser || !threadId || !reply.trim()) return;
+        if (!currentUser || !threadId || !reply.trim() || !thread) return;
 
         setIsSubmitting(true);
         try {
+            // 1. Masukkan balasan ke database
             const { error } = await supabase
                 .from('forum_posts')
                 .insert({
@@ -186,6 +157,16 @@ const ForumThreadPage: React.FC = () => {
                 });
 
             if (error) throw error;
+
+            // 2. Kirim Notifikasi ke Penulis Thread (jika orang lain yang membalas)
+            if (thread.author_id !== currentUser.id) {
+                await supabase.from('notifications').insert({
+                    user_id: thread.author_id,
+                    type: 'comment',
+                    title: 'Diskusi Anda dibalas',
+                    description: `${currentUser.name} membalas diskusi: "${thread.title.substring(0, 40)}..."`,
+                });
+            }
             
             setReply('');
             await fetchThreadData();
@@ -217,41 +198,6 @@ const ForumThreadPage: React.FC = () => {
                                 <p className="text-gray-900 font-bold">{thread.views}</p>
                                 <p>Dilihat</p>
                             </div>
-                        </div>
-                    </div>
-
-                    {/* AI Insight Section */}
-                    <div className="mb-8 overflow-hidden rounded-2xl border-2 border-indigo-100 bg-gradient-to-br from-indigo-50/50 to-white shadow-sm transition-all duration-500">
-                        <div className="bg-gradient-to-r from-indigo-600 to-primary-600 px-6 py-3 flex justify-between items-center text-white">
-                            <div className="flex items-center gap-2">
-                                <SparklesIcon className="h-5 w-5" />
-                                <span className="font-bold text-sm uppercase tracking-wider">Bantuan Mentor AI</span>
-                            </div>
-                            {!aiInsight && !isGeneratingAi && (
-                                <button 
-                                    onClick={handleGenerateAiInsight}
-                                    className="text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full backdrop-blur-sm transition-all"
-                                >
-                                    Minta Insight AI
-                                </button>
-                            )}
-                        </div>
-                        <div className="p-6">
-                            {isGeneratingAi ? (
-                                <div className="flex flex-col items-center py-6 gap-3">
-                                    <SpinnerIcon className="h-8 w-8 animate-spin text-primary-600" />
-                                    <p className="text-sm font-bold text-gray-500 animate-pulse uppercase tracking-widest">Menganalisis diskusi...</p>
-                                </div>
-                            ) : aiInsight ? (
-                                <div className="prose prose-indigo prose-sm max-w-none text-gray-700 animate-fade-in-up whitespace-pre-wrap leading-relaxed">
-                                    {aiInsight}
-                                    <div className="mt-4 pt-4 border-t border-indigo-50 flex items-center gap-2 text-[10px] font-bold text-indigo-400 uppercase">
-                                        <ChatBotIcon className="h-3 w-3" /> Jawaban didukung oleh Gemini 3 Pro
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className="text-center text-gray-500 text-sm">Butuh bantuan pakar? AI kami dapat merangkum diskusi ini dan memberikan saran bisnis profesional untuk Anda.</p>
-                            )}
                         </div>
                     </div>
                     
