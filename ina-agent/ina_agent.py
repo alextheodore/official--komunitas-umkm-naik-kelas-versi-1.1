@@ -1,13 +1,13 @@
 from langchain.agents import initialize_agent, AgentType
 from langchain.tools import Tool
-from langchain.memory import ConversationBufferMemory
+from langchain.memory import ConversationBufferWindowMemory
 import chromadb
 
 class INAAgent:
     def __init__(self, llm):
         self.llm = llm
         # 1. Tambahkan return_messages=True dan pastikan memory_key sesuai standar agent
-        self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        self.memory = ConversationBufferWindowMemory(memory_key="chat_history", return_messages=True)
         self.setup_tools()
         self.setup_agent()
 
