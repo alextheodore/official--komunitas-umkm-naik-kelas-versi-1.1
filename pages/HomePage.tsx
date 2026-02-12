@@ -60,7 +60,6 @@ const HeroSection: React.FC = () => {
         setCurrentIndex((prev) => (prev - 1 + totalSlides) % totalSlides);
     };
 
-    // Auto-play effect
     useEffect(() => {
         const timer = setInterval(nextSlide, 6000);
         return () => clearInterval(timer);
@@ -89,43 +88,42 @@ const HeroSection: React.FC = () => {
     const currentSlide = heroSlides[currentIndex];
 
     return (
-        <section className="relative h-[90vh] min-h-[650px] flex flex-col justify-center overflow-hidden bg-gray-900 transition-all duration-700">
-            {/* Background Layer with Crossfade-like effect */}
+        <section className="relative min-h-[700px] md:h-[90vh] md:min-h-[750px] flex flex-col justify-center overflow-hidden bg-gray-900">
+            {/* Background Layer */}
             <div className="absolute inset-0 z-0">
                 <img 
                     key={currentSlide.image}
                     src={currentSlide.image} 
                     alt="Background Hero" 
-                    className="w-full h-full object-cover opacity-40 animate-fade-in"
-                    style={{ animationDuration: '1.2s' }}
+                    className="w-full h-full object-cover opacity-30 md:opacity-40 animate-fade-in"
                 />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black/90"></div>
+                <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-black/95"></div>
             </div>
 
             {/* Content Layer */}
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-                <div key={`tag-${currentIndex}`} className="inline-flex items-center px-6 py-2 rounded-full border border-white/20 bg-white/5 backdrop-blur-md mb-8 animate-fade-in-up">
-                    <span className="text-white font-bold tracking-widest text-sm uppercase">{currentSlide.tag}</span>
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center pt-20 pb-32 md:pt-0 md:pb-0">
+                <div key={`tag-${currentIndex}`} className="inline-flex items-center px-5 py-1.5 rounded-full border border-white/20 bg-white/5 backdrop-blur-md mb-6 md:mb-8 animate-fade-in-up">
+                    <span className="text-white font-bold tracking-widest text-[10px] md:text-sm uppercase">{currentSlide.tag}</span>
                 </div>
 
-                <h1 key={`title-${currentIndex}`} className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white leading-tight mb-6 animate-fade-in-up [animation-delay:0.2s]">
+                <h1 key={`title-${currentIndex}`} className="text-3xl md:text-6xl lg:text-7xl font-extrabold text-white leading-tight mb-6 animate-fade-in-up [animation-delay:0.2s]">
                     {currentSlide.title}
                 </h1>
 
-                <p key={`desc-${currentIndex}`} className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-10 leading-relaxed animate-fade-in-up [animation-delay:0.4s]">
+                <p key={`desc-${currentIndex}`} className="text-sm md:text-xl text-gray-300 max-w-3xl mx-auto mb-10 leading-relaxed animate-fade-in-up [animation-delay:0.4s]">
                     {currentSlide.description}
                 </p>
 
                 <div key={`actions-${currentIndex}`} className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up [animation-delay:0.6s]">
                     <Link 
                         to={currentSlide.ctaPrimary.link} 
-                        className="w-full sm:w-auto px-10 py-4 bg-accent hover:bg-accent-600 text-gray-900 font-extrabold rounded-full shadow-[0_0_20px_rgba(255,193,7,0.4)] transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+                        className="w-full sm:w-auto px-8 md:px-10 py-3.5 md:py-4 bg-accent hover:bg-accent-600 text-gray-900 font-extrabold rounded-full shadow-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2"
                     >
                         {currentSlide.ctaPrimary.text} <span className="text-xl">→</span>
                     </Link>
                     <Link 
                         to={currentSlide.ctaSecondary.link} 
-                        className="w-full sm:w-auto px-10 py-4 border-2 border-white/30 hover:border-white text-white font-bold rounded-full backdrop-blur-sm transition-all hover:bg-white/10"
+                        className="w-full sm:w-auto px-8 md:px-10 py-3.5 md:py-4 border-2 border-white/30 hover:border-white text-white font-bold rounded-full backdrop-blur-sm transition-all hover:bg-white/10"
                     >
                         {currentSlide.ctaSecondary.text}
                     </Link>
@@ -133,42 +131,43 @@ const HeroSection: React.FC = () => {
             </div>
 
             {/* Bottom Info & Navigation Layer */}
-            <div className="absolute bottom-0 left-0 w-full z-20">
-                <div className="container mx-auto px-4 pb-10">
-                    <div className="flex flex-col md:flex-row items-center justify-center gap-12 lg:gap-24">
-                        {/* Stats Info */}
-                        <div className="flex flex-wrap justify-center gap-12 lg:gap-20 order-2 md:order-1">
+            <div className="absolute bottom-0 left-0 w-full z-20 bg-gradient-to-t from-black/80 to-transparent">
+                <div className="container mx-auto px-4 pb-6 md:pb-10">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                        
+                        {/* Stats Info - Menggunakan Grid agar rapi di Mobile */}
+                        <div className="grid grid-cols-3 gap-2 md:gap-12 w-full md:w-auto border-t border-white/10 pt-6 md:border-none md:pt-0">
                             <div className="text-center md:text-left">
-                                <p className="text-3xl font-black text-white leading-none">{counts.users.toLocaleString('id-ID')}</p>
-                                <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-2">Anggota Terdaftar</p>
+                                <p className="text-xl md:text-3xl font-black text-white leading-none">{counts.users.toLocaleString('id-ID')}</p>
+                                <p className="text-[8px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mt-2">Anggota</p>
                             </div>
-                            <div className="text-center md:text-left border-l border-white/10 pl-8 lg:pl-12">
-                                <p className="text-3xl font-black text-white leading-none">{counts.events.toLocaleString('id-ID')}</p>
-                                <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-2">Event Diadakan</p>
+                            <div className="text-center md:text-left border-x border-white/10 px-2 md:border-none md:px-0">
+                                <p className="text-xl md:text-3xl font-black text-white leading-none">{counts.events.toLocaleString('id-ID')}</p>
+                                <p className="text-[8px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mt-2">Event</p>
                             </div>
-                            <div className="text-center md:text-left border-l border-white/10 pl-8 lg:pl-12">
-                                <p className="text-3xl font-black text-white leading-none">{counts.products.toLocaleString('id-ID')}</p>
-                                <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-2">Produk Lokal</p>
+                            <div className="text-center md:text-left">
+                                <p className="text-xl md:text-3xl font-black text-white leading-none">{counts.products.toLocaleString('id-ID')}</p>
+                                <p className="text-[8px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mt-2">Produk</p>
                             </div>
                         </div>
 
                         {/* Slider Controls */}
-                        <div className="flex items-center gap-6 order-1 md:order-2">
+                        <div className="flex items-center gap-4 md:gap-6">
                             <button 
                                 onClick={prevSlide}
-                                className="p-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all active:scale-90"
+                                className="p-2 md:p-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all active:scale-90"
                                 aria-label="Previous Slide"
                             >
-                                <ChevronLeftIcon className="w-5 h-5" />
+                                <ChevronLeftIcon className="w-4 h-4 md:w-5 md:h-5" />
                             </button>
                             
-                            <div className="flex items-center gap-4 bg-black/40 px-6 py-2.5 rounded-full border border-white/5 shadow-inner">
-                                <span className="text-white font-bold text-sm tracking-widest">{currentIndex + 1} / {totalSlides}</span>
-                                <div className="flex gap-2">
+                            <div className="flex items-center gap-3 md:gap-4 bg-black/40 px-4 md:px-6 py-2 rounded-full border border-white/5">
+                                <span className="text-white font-bold text-[10px] md:text-sm tracking-widest">{currentIndex + 1} / {totalSlides}</span>
+                                <div className="hidden sm:flex gap-2">
                                     {heroSlides.map((_, idx) => (
                                         <div 
                                             key={idx} 
-                                            className={`h-2 rounded-full transition-all duration-300 ${currentIndex === idx ? 'w-8 bg-accent' : 'w-2 bg-white/20'}`}
+                                            className={`h-1.5 rounded-full transition-all duration-300 ${currentIndex === idx ? 'w-6 bg-accent' : 'w-1.5 bg-white/20'}`}
                                         ></div>
                                     ))}
                                 </div>
@@ -176,20 +175,21 @@ const HeroSection: React.FC = () => {
 
                             <button 
                                 onClick={nextSlide}
-                                className="p-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all active:scale-90"
+                                className="p-2 md:p-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all active:scale-90"
                                 aria-label="Next Slide"
                             >
-                                <ChevronRightIcon className="w-5 h-5" />
+                                <ChevronRightIcon className="w-4 h-4 md:w-5 md:h-5" />
                             </button>
                         </div>
                     </div>
                 </div>
-                {/* Progress Bar (Manual Resetting) */}
-                <div className="h-1.5 w-full bg-white/5 flex justify-center">
+                
+                {/* Progress Bar */}
+                <div className="h-1 w-full bg-white/5 flex justify-center">
                     <div 
                         key={`progress-${currentIndex}`}
                         className="h-full bg-accent shadow-[0_0_10px_rgba(255,193,7,0.5)] animate-progress"
-                        style={{ width: '66.6%', animationDuration: '6s' }}
+                        style={{ width: '100%', animationDuration: '6s' }}
                     ></div>
                 </div>
             </div>
@@ -203,10 +203,7 @@ const AboutSection: React.FC = () => (
             <div className="grid md:grid-cols-2 gap-12 items-center">
                  <div className="relative">
                     <div className="relative max-w-md mx-auto">
-                        {/* Decorative background shape */}
                         <div className="absolute -top-4 -left-4 w-full h-full bg-primary-200 rounded-2xl transform rotate-3"></div>
-                        
-                        {/* The image with its own frame */}
                         <div className="relative bg-white p-2 rounded-2xl shadow-2xl border-2 border-gray-50">
                             <img 
                                 src="https://picsum.photos/seed/ketua/500/600" 
@@ -214,27 +211,29 @@ const AboutSection: React.FC = () => (
                                 className="w-full h-auto rounded-xl" 
                             />
                         </div>
-                        
+                        <div className="absolute -bottom-8 -right-8 w-24 h-24 md:w-28 md:h-28 bg-white rounded-full shadow-lg flex items-center justify-center border-4 border-primary-50">
+                            <LogoIcon className="h-16 w-16 md:h-20 md:w-20 text-primary-500" />
+                        </div>
                     </div>
                 </div>
-                <div>
-                    <span className="text-primary-600 font-semibold uppercase tracking-wider">TENTANG KAMI</span>
-                    <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-gray-900">Misi Kami Adalah Memberdayakan UMKM Indonesia</h2>
-                    <p className="mt-4 text-gray-600 leading-relaxed">
+                <div className="text-center md:text-left">
+                    <span className="text-primary-600 font-semibold uppercase tracking-wider text-xs md:text-sm">TENTANG KAMI</span>
+                    <h2 className="mt-2 text-2xl md:text-4xl font-extrabold text-gray-900 leading-tight">Misi Kami Adalah Memberdayakan UMKM Indonesia</h2>
+                    <p className="mt-4 text-gray-600 leading-relaxed text-sm md:text-base">
                         Kami percaya bahwa UMKM adalah tulang punggung ekonomi Indonesia. Visi kami adalah menciptakan ekosistem digital yang solid di mana setiap UMKM memiliki kesempatan yang sama untuk belajar, berkolaborasi, dan bertumbuh secara berkelanjutan.
                     </p>
-                    <ul className="mt-6 space-y-4">
+                    <ul className="mt-6 space-y-4 text-left">
                         <li className="flex items-start">
-                            <span className="flex-shrink-0 h-6 w-6 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mr-3 font-bold">✓</span>
-                            <span className="text-gray-700">Menyediakan platform untuk networking dan berbagi pengetahuan.</span>
+                            <span className="flex-shrink-0 h-5 w-5 md:h-6 md:w-6 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mr-3 font-bold text-xs">✓</span>
+                            <span className="text-gray-700 text-sm md:text-base">Menyediakan platform untuk networking dan berbagi pengetahuan.</span>
                         </li>
                         <li className="flex items-start">
-                            <span className="flex-shrink-0 h-6 w-6 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mr-3 font-bold">✓</span>
-                            <span className="text-gray-700">Mengadakan event dan pelatihan berkualitas untuk peningkatan kapasitas.</span>
+                            <span className="flex-shrink-0 h-5 w-5 md:h-6 md:w-6 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mr-3 font-bold text-xs">✓</span>
+                            <span className="text-gray-700 text-sm md:text-base">Mengadakan event dan pelatihan berkualitas.</span>
                         </li>
                         <li className="flex items-start">
-                            <span className="flex-shrink-0 h-6 w-6 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mr-3 font-bold">✓</span>
-                            <span className="text-gray-700">Membuka akses pasar yang lebih luas melalui marketplace komunitas.</span>
+                            <span className="flex-shrink-0 h-5 w-5 md:h-6 md:w-6 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mr-3 font-bold text-xs">✓</span>
+                            <span className="text-gray-700 text-sm md:text-base">Membuka akses pasar melalui marketplace komunitas.</span>
                         </li>
                     </ul>
                 </div>
@@ -281,15 +280,15 @@ const BlogSection: React.FC = () => {
     return (
         <section className="py-24 bg-white">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+                <div className="flex flex-col md:flex-row justify-between items-center md:items-end mb-12 gap-6 text-center md:text-left">
                     <div className="max-w-2xl">
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="h-1 w-12 bg-primary-600 rounded-full"></div>
-                            <span className="text-primary-600 font-bold uppercase tracking-widest text-sm">Update Terkini</span>
+                        <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
+                            <div className="h-1 w-8 md:w-12 bg-primary-600 rounded-full"></div>
+                            <span className="text-primary-600 font-bold uppercase tracking-widest text-[10px] md:text-sm">Update Terkini</span>
                         </div>
-                        <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">Insight Bisnis Untuk Anda</h2>
+                        <h2 className="text-2xl md:text-4xl font-black text-gray-900 leading-tight">Insight Bisnis Untuk Anda</h2>
                     </div>
-                    <Link to="/blog" className="px-6 py-2.5 bg-primary-50 text-primary-700 font-bold rounded-xl hover:bg-primary-100 transition-all flex items-center gap-2">
+                    <Link to="/blog" className="w-full md:w-auto px-6 py-2.5 bg-primary-50 text-primary-700 font-bold rounded-xl hover:bg-primary-100 transition-all flex items-center justify-center gap-2 text-sm">
                         Semua Artikel <span>→</span>
                     </Link>
                 </div>
@@ -333,10 +332,10 @@ const EventsSection: React.FC = () => {
                 <div className="text-center mb-16">
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-100 text-primary-700 rounded-full mb-4">
                         <SparklesIcon className="w-4 h-4" />
-                        <span className="text-xs font-black uppercase tracking-widest">Belajar Bersama</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">Belajar Bersama</span>
                     </div>
-                    <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-4">Agenda Komunitas Mendatang</h2>
-                    <p className="text-gray-600 max-w-2xl mx-auto">
+                    <h2 className="text-2xl md:text-4xl font-black text-gray-900 mb-4">Agenda Komunitas Mendatang</h2>
+                    <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base">
                         Ikuti berbagai program pelatihan dan networking yang dirancang khusus untuk pertumbuhan bisnis Anda.
                     </p>
                 </div>
@@ -346,7 +345,7 @@ const EventsSection: React.FC = () => {
                      <div className="col-span-full text-center text-gray-400 py-10">Belum ada agenda terdekat.</div>}
                 </div>
                 <div className="mt-16 text-center">
-                    <Link to="/events" className="inline-flex items-center gap-2 font-bold text-primary-600 hover:text-primary-700 underline underline-offset-8 decoration-2">
+                    <Link to="/events" className="inline-flex items-center gap-2 font-bold text-primary-600 hover:text-primary-700 underline underline-offset-8 decoration-2 text-sm">
                         Lihat Jadwal Selengkapnya
                     </Link>
                 </div>
@@ -365,11 +364,11 @@ const HomePage: React.FC = () => {
             
             <section className="py-20 bg-primary-600">
                 <div className="container mx-auto px-4 text-center text-white">
-                    <h2 className="text-3xl md:text-4xl font-black mb-6">Siap Menjadikan UMKM Anda Naik Kelas?</h2>
-                    <p className="text-primary-100 mb-10 max-w-xl mx-auto text-lg font-medium">
+                    <h2 className="text-2xl md:text-4xl font-black mb-6">Siap Menjadikan UMKM Anda Naik Kelas?</h2>
+                    <p className="text-primary-100 mb-10 max-w-xl mx-auto text-base md:text-lg font-medium opacity-90">
                         Bergabunglah dengan ribuan pengusaha lainnya dan nikmati akses eksklusif ke pasar serta pengetahuan bisnis.
                     </p>
-                    <Link to="/register" className="px-12 py-5 bg-white text-primary-700 font-black rounded-full hover:bg-gray-100 transition-all shadow-xl hover:scale-105 inline-block">
+                    <Link to="/register" className="px-10 md:px-12 py-4 md:py-5 bg-white text-primary-700 font-black rounded-full hover:bg-gray-100 transition-all shadow-xl hover:scale-105 inline-block text-sm md:text-base">
                         Daftar Menjadi Anggota
                     </Link>
                 </div>
