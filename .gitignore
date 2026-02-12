@@ -22,3 +22,19 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+secrets.toml
+
+# Database
+*.db
+chroma_db/
+
+# OS
+.DS_Store
+Thumbs.db
