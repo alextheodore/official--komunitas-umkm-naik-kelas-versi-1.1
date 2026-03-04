@@ -1,15 +1,14 @@
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain import hub
-from langchain.tools import Tool
+from langchain.tools import Tool, StructuredTool # Tambahkan StructuredTool
 from langchain.memory import ConversationBufferMemory
 import sqlite3
 import json
 
-
 class INAAgent:
     def __init__(self, llm):
         self.llm = llm
-        self.memory = ConversationBufferMemory(memory_key="chat_history")
+        self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
         self.setup_tools()
         self.setup_agent()
 
@@ -43,12 +42,13 @@ ANCAMAN (Threats):
 """
             return template
 
-        # Tool 2: Kalkulator Keuangan
+        # Tool 2: Kalkulator Keuangan (Multi-argument)
         def kalkulator_keuangan(modal: float, margin: float) -> str:
-            """Hitung proyeksi keuangan sederhana"""
-            keuntungan = modal * (margin / 100)
-            roi = (keuntungan / modal) * 100
-            return f"""
+            """Hitung proyeksi keuangan sederhana. Butuh angka modal dan margin."""
+            try:
+                keuntungan = modal * (margin / 100)
+                roi = (keuntungan / modal) * 100
+                return f"""
 Hasil Perhitungan:
 Modal: Rp {modal:,.0f}
 Margin: {margin}%
@@ -56,6 +56,8 @@ Keuntungan/bulan: Rp {keuntungan:,.0f}
 ROI: {roi:.1f}%
 Break Even: {12/roi:.1f} bulan
 """
+            except Exception as e:
+                return f"Gagal menghitung: {str(e)}. Pastikan input adalah angka."
 
         # Tool 3: Rekomendasi Platform
         def rekomendasi_platform(jenis_usaha: str) -> str:
@@ -63,42 +65,41 @@ Break Even: {12/roi:.1f} bulan
             platforms = {
                 "makanan": ["GoFood", "GrabFood", "ShopeeFood", "Instagram"],
                 "fashion": ["Shopee", "Tokopedia", "Instagram", "TikTok Shop"],
-                "jasa": [
-                    "Instagram",
-                    "Facebook",
-                    "Google Business",
-                    "WhatsApp Business",
-                ],
+                "jasa": ["Instagram", "Facebook", "Google Business", "WhatsApp Business"],
                 "kerajinan": ["Etsy", "Tokopedia", "Instagram", "Pameran Online"],
             }
-            rec = platforms.get(
-                jenis_usaha.lower(), ["Instagram", "WhatsApp Business", "Facebook"]
-            )
+            rec = platforms.get(jenis_usaha.lower(), ["Instagram", "WhatsApp Business", "Facebook"])
             return f"Rekomendasi untuk {jenis_usaha}: {', '.join(rec)}"
 
-        # Definisikan tools ke dalam list LangChain
+        # Definisikan tools
         self.tools = [
             Tool(
                 name="Analisis_SWOT",
                 func=analisis_swot,
-                description="Analisis SWOT untuk jenis usaha",
+                description="Gunakan ini untuk menganalisis kelebihan dan kekurangan usaha. Input: nama jenis usaha (misal: 'bakso')."
             ),
-            Tool(
-                name="Kalkulator_Keuangan",
+            # GUNAKAN StructuredTool untuk fungsi dengan > 1 parameter
+            StructuredTool.from_function(
                 func=kalkulator_keuangan,
-                description="Kalkulator keuangan UMKM",
+                name="Kalkulator_Keuangan",
+                description="Gunakan ini untuk menghitung keuntungan. Input harus berupa objek dengan 'modal' (angka) dan 'margin' (angka persen)."
             ),
             Tool(
                 name="Rekomendasi_Platform",
                 func=rekomendasi_platform,
-                description="Rekomendasi platform digital",
+                description="Gunakan ini untuk mencari tempat jualan online. Input: kategori usaha."
             ),
         ]
 
     def setup_agent(self):
         """Setup agent dengan ReAct pattern"""
-        prompt = hub.pull("hwchase17/react-chat")
-        self.agent = create_react_agent(llm=self.llm, tools=self.tools, prompt=prompt)
+        # Menggunakan structured-chat-agent karena kita punya tools dengan multi-input
+        prompt = hub.pull("hwchase17/structured-chat-agent") 
+        
+        # Perhatikan penggunaan create_structured_chat_agent jika menggunakan StructuredTool
+        from langchain.agents import create_structured_chat_agent
+        self.agent = create_structured_chat_agent(llm=self.llm, tools=self.tools, prompt=prompt)
+        
         self.agent_executor = AgentExecutor(
             agent=self.agent,
             tools=self.tools,
@@ -110,9 +111,10 @@ Break Even: {12/roi:.1f} bulan
     def chat(self, input_text: str) -> str:
         """Main chat function"""
         try:
+            # Gunakan invoke sesuai standar LangChain terbaru
             response = self.agent_executor.invoke(
-                {"input": input_text, "chat_history": self.memory.buffer}
+                {"input": input_text}
             )
             return response["output"]
         except Exception as e:
-            return f"Maaf terjadi error: {str(e)}"
+            return f"Maaf terjadi error teknis: {str(e)}"
