@@ -6,11 +6,12 @@ import os
 load_dotenv()  # Load environment variables from .env file
 
 llm = ChatOpenAI(
-    openai_api_base="https://api.groq.com/openai/v1",
-    openai_api_key=os.getenv("GROQ_API_KEY"),
-    model_name="qwen/qwen3-32b",
-    max_completion_tokens=4096,
-    temperature=0
+    base_url="https://api.groq.com/openai/v1",
+    api_key=os.getenv("GROQ_API_KEY"),
+    model="qwen/qwen3-32b",
+    temperature=0.6,
+    max_tokens=4096,
+    streaming=True,
 )
 
 embeddings = HuggingFaceEmbeddings(
