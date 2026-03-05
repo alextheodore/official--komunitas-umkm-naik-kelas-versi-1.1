@@ -9,8 +9,8 @@ llm = ChatOpenAI(
     base_url="https://api.groq.com/openai/v1",
     api_key=os.getenv("GROQ_API_KEY"),
     model="qwen/qwen3-32b",
-    temperature=0.6,
-    max_tokens=4096,
+    temperature=0.3,
+    max_tokens=2048,
     streaming=True,
 )
 
