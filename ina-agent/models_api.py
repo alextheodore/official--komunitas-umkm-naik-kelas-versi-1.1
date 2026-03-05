@@ -8,7 +8,7 @@ load_dotenv()  # Load environment variables from .env file
 llm = ChatOpenAI(
     base_url="https://api.groq.com/openai/v1",
     api_key=os.getenv("GROQ_API_KEY"),
-    model="qwen/qwen3-32b",
+    model="openai/gpt-oss-120b",
     temperature=0.3,
     max_tokens=2048,
     streaming=True,
