@@ -3,6 +3,8 @@ uvicorn==0.24.0
 streamlit==1.28.0
 langchain==0.0.350
 langchain-community==0.0.10
+langchain-openai  # TAMBAHKAN INI
+openai
 chromadb==0.4.22
 sentence-transformers==2.2.2
 pypdf==3.17.0
